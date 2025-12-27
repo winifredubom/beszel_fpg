@@ -1,3 +1,5 @@
+import 'package:beszel_fpg/features/authentication/presentation/pages/forgot_password_page.dart';
+import 'package:beszel_fpg/features/authentication/presentation/pages/login_page.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -6,8 +8,24 @@ import '../../features/dashboard/presentation/pages/systems_board.dart';
 import '../constants/app_constants.dart';
 
 final GoRouter appRouter = GoRouter(
-  initialLocation: AppRoutes.dashboard,
+  initialLocation: AppRoutes.login,
   routes: [
+     GoRoute(
+      path: AppRoutes.login,
+      name: 'login_page',
+      pageBuilder: (context, state) => CupertinoPage<void>(
+        key: state.pageKey,
+        child: const LoginPage(),
+      ),
+    ),
+     GoRoute(
+      path: AppRoutes.forgotPassword,
+      name: 'forgot_password',
+      pageBuilder: (context, state) => CupertinoPage<void>(
+        key: state.pageKey,
+        child: const ForgotPasswordPage(),
+      ),
+    ),
     GoRoute(
       path: AppRoutes.dashboard,
       name: 'dashboard',

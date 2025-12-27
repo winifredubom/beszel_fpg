@@ -1,3 +1,5 @@
+// ignore_for_file: deprecated_member_use
+
 import 'package:beszel_fpg/core/theme/theme_extensions.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -26,13 +28,14 @@ class LoginTextField extends StatelessWidget {
       decoration: BoxDecoration(
         color: context.surfaceColor,
         borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: context.borderColor, width: 1.2),
         boxShadow: [
-          BoxShadow(
-            color: Theme.of(context).brightness == Brightness.dark
-                ? Colors.black.withOpacity(0.3)
-                : Colors.black.withOpacity(0.08),
-            blurRadius: Theme.of(context).brightness == Brightness.dark ? 20 : 12,
-            offset: const Offset(0, 4),
+            BoxShadow(
+            color: Colors.black.withOpacity(
+              Theme.of(context).brightness == Brightness.light ? 0.25 : 0.08,
+            ),
+            blurRadius: Theme.of(context).brightness == Brightness.light ? 16 : 8,
+            offset: const Offset(0, 2),
           ),
         ],
       ),

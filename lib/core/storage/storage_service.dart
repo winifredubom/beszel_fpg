@@ -1,122 +1,123 @@
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:hive/hive.dart';
 import '../exceptions/app_exceptions.dart';
 
 class StorageService {
-  static SharedPreferences? _prefs;
-  
+  static const String _boxName = 'app_storage';
+  static Box? _box;
+
   static Future<void> init() async {
-    _prefs = await SharedPreferences.getInstance();
+    _box = await Hive.openBox(_boxName);
   }
-  
-  static SharedPreferences get _instance {
-    if (_prefs == null) {
+
+  static Box get _instance {
+    if (_box == null) {
       throw StorageException.readError();
     }
-    return _prefs!;
+    return _box!;
   }
-  
+
   // String operations
-  static Future<bool> setString(String key, String value) async {
+  static Future<void> setString(String key, String value) async {
     try {
-      return await _instance.setString(key, value);
+      await _instance.put(key, value);
     } catch (e) {
       throw StorageException.writeError();
     }
   }
-  
+
   static String? getString(String key) {
     try {
-      return _instance.getString(key);
+      return _instance.get(key) as String?;
     } catch (e) {
       throw StorageException.readError();
     }
   }
-  
+
   // Bool operations
-  static Future<bool> setBool(String key, bool value) async {
+  static Future<void> setBool(String key, bool value) async {
     try {
-      return await _instance.setBool(key, value);
+      await _instance.put(key, value);
     } catch (e) {
       throw StorageException.writeError();
     }
   }
-  
+
   static bool? getBool(String key) {
     try {
-      return _instance.getBool(key);
+      return _instance.get(key) as bool?;
     } catch (e) {
       throw StorageException.readError();
     }
   }
-  
+
   // Int operations
-  static Future<bool> setInt(String key, int value) async {
+  static Future<void> setInt(String key, int value) async {
     try {
-      return await _instance.setInt(key, value);
+      await _instance.put(key, value);
     } catch (e) {
       throw StorageException.writeError();
     }
   }
-  
+
   static int? getInt(String key) {
     try {
-      return _instance.getInt(key);
+      return _instance.get(key) as int?;
     } catch (e) {
       throw StorageException.readError();
     }
   }
-  
+
   // Double operations
-  static Future<bool> setDouble(String key, double value) async {
+  static Future<void> setDouble(String key, double value) async {
     try {
-      return await _instance.setDouble(key, value);
+      await _instance.put(key, value);
     } catch (e) {
       throw StorageException.writeError();
     }
   }
-  
+
   static double? getDouble(String key) {
     try {
-      return _instance.getDouble(key);
+      return _instance.get(key) as double?;
     } catch (e) {
       throw StorageException.readError();
     }
   }
-  
-  // List operations
-  static Future<bool> setStringList(String key, List<String> value) async {
+
+  // List<String> operations
+  static Future<void> setStringList(String key, List<String> value) async {
     try {
-      return await _instance.setStringList(key, value);
+      await _instance.put(key, value);
     } catch (e) {
       throw StorageException.writeError();
     }
   }
-  
+
   static List<String>? getStringList(String key) {
     try {
-      return _instance.getStringList(key);
+      return (_instance.get(key) as List?)?.cast<String>();
     } catch (e) {
       throw StorageException.readError();
     }
   }
-  
+
   // Remove operations
-  static Future<bool> remove(String key) async {
+  static Future<void> remove(String key) async {
     try {
-      return await _instance.remove(key);
+      await _instance.delete(key);
     } catch (e) {
       throw StorageException.writeError();
     }
   }
-  
-  static Future<bool> clear() async {
+
+  static Future<void> clear() async {
     try {
-      return await _instance.clear();
+      await _instance.clear();
     } catch (e) {
       throw StorageException.writeError();
     }
   }
-  
+
   // Check if key exists
   static bool containsKey(String key) {
     try {
@@ -125,11 +126,11 @@ class StorageService {
       throw StorageException.readError();
     }
   }
-  
+
   // Get all keys
   static Set<String> getKeys() {
     try {
-      return _instance.getKeys();
+      return _instance.keys.cast<String>().toSet();
     } catch (e) {
       throw StorageException.readError();
     }

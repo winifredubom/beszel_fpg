@@ -1,7 +1,11 @@
+import 'package:beszel_fpg/features/authentication/presentation/pages/login_page.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:hive/hive.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import 'core/config/app_config.dart';
 import 'core/language/language_manager.dart';
 import 'core/theme/app_theme.dart';
@@ -11,17 +15,12 @@ import 'core/storage/storage_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
-  // Initialize storage
+  await Hive.initFlutter();
   await StorageService.init();
-  
-  // Initialize theme manager
   await ThemeManager.instance.init();
-  
-  // Initialize language manager
   await LanguageManager.instance.initialize();
   
-  runApp(const BeszelApp());
+  runApp(ProviderScope(child: const BeszelApp()));
 }
 
 class BeszelApp extends StatelessWidget {

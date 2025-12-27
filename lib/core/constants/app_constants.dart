@@ -86,4 +86,6 @@ class AppRoutes {
   static const String settings = '/settings';
   static const String addServer = '/add-server';
   static const String serverDetails = '/server-details';
+  static const String login = '/login';
+  static const String forgotPassword = '/forgot-password';
 }

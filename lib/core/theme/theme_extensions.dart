@@ -12,19 +12,25 @@ extension ThemeContext on BuildContext {
   
   /// Get background color based on current theme
   Color get backgroundColor => isDarkMode 
-      ? AppColors.backgroundDark 
-      : AppColors.backgroundLight;
+      ? AppColors.backgroundLight
+      : AppColors.backgroundDark;
   
   /// Get surface color based on current theme
   Color get surfaceColor => isDarkMode 
-      ? AppColors.surfaceDark 
-      : AppColors.surfaceLight;
+      ? AppColors. surfaceLight
+      : AppColors.surfaceDark;
   
   /// Get primary text color based on current theme
   Color get textColor => isDarkMode 
+      ? AppColors.textPrimary 
+      : AppColors.textPrimaryDark;
+       Color get subtextColor => isDarkMode 
       ? AppColors.textPrimaryDark 
       : AppColors.textPrimary;
   
+  Color get buttonColor => isDarkMode 
+      ? AppColors.textPrimary 
+      : AppColors.textPrimaryDark;
   /// Get secondary text color based on current theme
   Color get secondaryTextColor => isDarkMode 
       ? AppColors.textSecondaryDark 

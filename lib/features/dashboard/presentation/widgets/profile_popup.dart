@@ -1,6 +1,7 @@
 import 'package:beszel_fpg/core/theme/theme_manager.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../core/theme/theme_extensions.dart';
 
 class ProfilePopup extends StatelessWidget {
@@ -78,8 +79,7 @@ class ProfilePopup extends StatelessWidget {
                       color: context.backgroundColor,
                       borderRadius: BorderRadius.circular(8),
                       onPressed: () {
-                        // TODO: Implement logout
-                        Navigator.pop(context);
+                        context.pushNamed('login_page');
                       },
                       child: Text(
                         'Log Out',

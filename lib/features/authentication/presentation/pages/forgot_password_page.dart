@@ -1,5 +1,4 @@
 import 'package:beszel_fpg/core/theme/theme_extensions.dart';
-import 'package:beszel_fpg/features/authentication/presentation/pages/forgot_password_page.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,22 +6,30 @@ import 'package:go_router/go_router.dart';
 import '../widgets/login_text_field.dart';
 import '../widgets/login_button.dart';
 
-class LoginPage extends ConsumerStatefulWidget {
-  const LoginPage({super.key});
+class ForgotPasswordPage extends ConsumerStatefulWidget {
+  const ForgotPasswordPage({super.key});
 
   @override
-  ConsumerState<LoginPage> createState() => _LoginPageState();
+  ConsumerState<ForgotPasswordPage> createState() => _ForgotPasswordPageState();
 }
 
-class _LoginPageState extends ConsumerState<LoginPage> {
+class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
   final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
-  bool _isObscured = true;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: context.backgroundColor,
+      appBar: AppBar(
+        backgroundColor: context.backgroundColor,
+        elevation: 0,
+        leading: IconButton(
+          icon: Icon(CupertinoIcons.back, color: context.textColor),
+          onPressed: () {
+            context.goNamed('login_page');
+          },
+        ),
+      ),
       body: Center(
         child: SingleChildScrollView(
           child: Padding(
@@ -34,65 +41,46 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 Text(
                   'Beszel',
                   style: TextStyle(
-                    fontSize: 32,
-                    fontWeight: FontWeight.bold,
+                    fontSize: 40,
+                    fontWeight: FontWeight.w900,
                     color: context.textColor,
+                    fontFamily: 'Montserrat',
                   ),
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  'Please sign in to your account',
+                  'Enter email address to reset password',
                   style: TextStyle(
-                    fontSize: 16,
+                    fontSize: 18,
                     color: context.secondaryTextColor,
                   ),
+                  textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 32),
                 LoginTextField(
                   controller: _emailController,
-                  hintText: 'Email',
+                  hintText: 'name@example.com',
                   icon: CupertinoIcons.mail,
                   keyboardType: TextInputType.emailAddress,
                 ),
-                const SizedBox(height: 16),
-                LoginTextField(
-                  controller: _passwordController,
-                  hintText: 'Password',
-                  icon: CupertinoIcons.lock,
-                  obscureText: _isObscured,
-                  keyboardType: TextInputType.visiblePassword,
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                      _isObscured
-                          ? CupertinoIcons.eye_slash
-                          : CupertinoIcons.eye,
-                      color: context.secondaryTextColor,
-                      size: 20,
-                    ),
-                    onPressed: () {
-                      setState(() {
-                        _isObscured = !_isObscured;
-                      });
-                    },
-                  ),
-                ),
                 const SizedBox(height: 24),
                 LoginButton(
-                  text: 'Sign in',
+                  text: 'Reset Password',
                   onPressed: () {
-                    // TODO: Implement authentication logic
+                    // TODO: Implement reset password logic
                   },
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 32),
                 GestureDetector(
                   onTap: () {
-                    context.pushNamed('forgot_password');
+                    // TODO: Implement navigation or instructions
                   },
                   child: Text(
-                    'Forgot password?',
+                    'Command line instructions',
                     style: TextStyle(
                       color: context.secondaryTextColor,
                       decoration: TextDecoration.underline,
+                      fontSize: 16,
                     ),
                   ),
                 ),
