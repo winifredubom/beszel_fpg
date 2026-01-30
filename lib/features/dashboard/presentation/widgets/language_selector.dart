@@ -2,12 +2,21 @@
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/language/language_manager.dart';
 import '../../../../core/theme/theme_extensions.dart';
 import '../../../../core/theme/theme_manager.dart';
+import '../../../dashboard/data/service/dashboard_service.dart';
 
 class LanguageSelector extends StatelessWidget {
   const LanguageSelector({super.key});
+
+  static const Map<String, String> _localeAssetUrls = {
+    // Map full locale codes (language_country) to asset URLs.
+    // Example provided:
+    'de_DE': 'https://beszel.flexipgroup.com/assets/de-BuT7B2oz.js',
+    // TODO: Add more locales here as they become available.
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -23,15 +32,11 @@ class LanguageSelector extends StatelessWidget {
             listenable: ThemeManager.instance,
             builder: (context, _) {
               final isDarkMode = ThemeManager.instance.isDarkMode;
-              return Icon(
-                Icons.translate,
-                color: isDarkMode ? Colors.white : Colors.black,
-                size: 20,
-              );
+              return Icon(Icons.translate, color: context.textColor, size: 20);
             },
           ),
         );
-      }
+      },
     );
   }
 
@@ -45,20 +50,48 @@ class LanguageSelector extends StatelessWidget {
           width: double.maxFinite,
           child: CupertinoScrollbar(
             child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: LanguageManager.supportedLocales.entries.map((entry) {
-                  final localeCode = entry.key.split('_');
-                  return _buildLanguageItem(
-                    context,
-                    entry.value['nativeName']!,
-                    localeCode[1],
-                    () {
-                      LanguageManager.instance.setLocale(localeCode[0], localeCode[1]);
-                      Navigator.pop(context);
-                    },
+              child: Consumer(
+                builder: (context, ref, _) {
+                  final manifestAsync = ref.watch(languageAssetsManifestProvider);
+                  return Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: LanguageManager.supportedLocales.entries.map((
+                      entry,
+                    ) {
+                      final parts = entry.key.split('_');
+                      final fullCode = entry.key; // e.g., de_DE
+                      return _buildLanguageItem(
+                        context,
+                        ref,
+                        entry.value['nativeName']!,
+                        parts[1],
+                        () async {
+                          // Try manifest first (if loaded), fallback to static mapping
+                          String? assetUrl;
+                          final manifest = manifestAsync.asData?.value ?? {};
+                          assetUrl = manifest[fullCode] ?? _localeAssetUrls[fullCode];
+                          if (assetUrl != null) {
+                            try {
+                              final translations = await ref.read(
+                                translationsProvider(assetUrl).future,
+                              );
+                              LanguageManager.instance.setTranslations(
+                                translations,
+                              );
+                            } catch (e) {
+                              // If fetching/parsing fails, keep existing translations.
+                            }
+                          }
+                          await LanguageManager.instance.setLocale(
+                            parts[0],
+                            parts[1],
+                          );
+                          Navigator.pop(context);
+                        },
+                      );
+                    }).toList(),
                   );
-                }).toList(),
+                },
               ),
             ),
           ),
@@ -76,9 +109,16 @@ class LanguageSelector extends StatelessWidget {
     );
   }
 
-  Widget _buildLanguageItem(BuildContext context, String language, String code, VoidCallback onSelect) {
-    final isSelected = LanguageManager.instance.currentLocale.countryCode == code;
-    
+  Widget _buildLanguageItem(
+    BuildContext context,
+    WidgetRef ref,
+    String language,
+    String code,
+    VoidCallback onSelect,
+  ) {
+    final isSelected =
+        LanguageManager.instance.currentLocale.countryCode == code;
+
     return CupertinoButton(
       padding: const EdgeInsets.symmetric(vertical: 8),
       onPressed: onSelect,
@@ -104,11 +144,7 @@ class LanguageSelector extends StatelessWidget {
           ),
           if (isSelected) ...[
             const SizedBox(width: 8),
-            Icon(
-              CupertinoIcons.check_mark,
-              color: context.textColor,
-              size: 16,
-            ),
+            Icon(CupertinoIcons.check_mark, color: context.textColor, size: 16),
           ],
         ],
       ),

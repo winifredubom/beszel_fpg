@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../core/theme/theme_extensions.dart';
 import '../../../../core/theme/theme_manager.dart';
 import 'language_selector.dart';
@@ -35,7 +36,7 @@ class CustomAppBar extends StatelessWidget {
         if (leadingIcon != null)
           leadingIcon!,
         GestureDetector(
-          onTap: canGoBack ? (onBackPressed ?? () => Navigator.pop(context)) : null,
+          onTap: canGoBack ? (onBackPressed ?? () {context.go('/');}) : null,
           child: Text(
             'Beszel',
             style: TextStyle(

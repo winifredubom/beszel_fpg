@@ -9,12 +9,12 @@ final String authBaseUrl = _getAuthBaseUrl();
 final String baseUrl = _getBaseUrl();
 
 String _getAuthBaseUrl() {
-return "https://auth.civishealth.com/api/auth";
+return "https://beszel.flexipgroup.com/api";
     
 }
 
 String _getBaseUrl() {
- return "https://auth.civishealth.com/api";
+ return "https://beszel.flexipgroup.com/api";
   
 }
 

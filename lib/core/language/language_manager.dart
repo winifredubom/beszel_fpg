@@ -5,16 +5,18 @@ import 'package:shared_preferences/shared_preferences.dart';
 class LanguageManager extends ChangeNotifier {
   static final LanguageManager _instance = LanguageManager._internal();
   static LanguageManager get instance => _instance;
-  
+
   final String _prefsKey = 'selected_locale';
   SharedPreferences? _prefs;
-  
+
   Locale _currentLocale = const Locale('en', 'US');
-  
+  Map<String, String> _translations = const {};
+
   Locale get currentLocale => _currentLocale;
-  
+  Map<String, String> get translations => _translations;
+
   LanguageManager._internal();
-  
+
   Future<void> initialize() async {
     _prefs = await SharedPreferences.getInstance();
     final savedLocale = _prefs?.getString(_prefsKey);
@@ -26,13 +28,22 @@ class LanguageManager extends ChangeNotifier {
     }
     notifyListeners();
   }
-  
+
   Future<void> setLocale(String languageCode, String countryCode) async {
     _currentLocale = Locale(languageCode, countryCode);
     await _prefs?.setString(_prefsKey, '${languageCode}_${countryCode}');
     notifyListeners();
   }
-  
+
+  /// Replace current translations and notify listeners
+  void setTranslations(Map<String, String> map) {
+    _translations = Map.unmodifiable(map);
+    notifyListeners();
+  }
+
+  /// Translate a key using the loaded dictionary; fallback to the key itself
+  String translate(String key) => _translations[key] ?? key;
+
   static final Map<String, Map<String, String>> supportedLocales = {
     'ar_PS': {'name': 'العربية', 'nativeName': 'العربية'},
     'bg_BG': {'name': 'Bulgarian', 'nativeName': 'Български'},
@@ -60,5 +71,6 @@ class LanguageManager extends ChangeNotifier {
     'vi_VN': {'name': 'Vietnamese', 'nativeName': 'Tiếng Việt'},
     'zh_CN': {'name': 'Chinese (Simplified)', 'nativeName': '简体中文'},
     'zh_TW': {'name': 'Chinese (Traditional)', 'nativeName': '繁體中文'},
+    'zh_HK': {'name': 'Chinese (Hong Kong)', 'nativeName': '香港中文'},
   };
 }

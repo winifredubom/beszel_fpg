@@ -1,8 +1,14 @@
+import '../language/language_manager.dart';
 extension StringExtensions on String {
   /// Capitalize first letter of string
   String get capitalize {
     if (isEmpty) return this;
     return '${this[0].toUpperCase()}${substring(1)}';
+  }
+  
+  /// Translate this string using the loaded language dictionary
+  String tr() {
+    return LanguageManager.instance.translate(this);
   }
   
   /// Check if string is a valid URL

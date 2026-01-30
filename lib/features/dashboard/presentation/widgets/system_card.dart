@@ -1,4 +1,7 @@
+// ignore_for_file: deprecated_member_use
+
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 import '../../../../core/theme/theme_extensions.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/constants/app_constants.dart';
@@ -42,7 +45,14 @@ class SystemCard extends StatelessWidget {
         padding: const EdgeInsets.all(AppDimensions.paddingL),
         decoration: BoxDecoration(
           color: context.surfaceColor,
-          borderRadius: BorderRadius.circular(AppDimensions.radiusL),
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
           border: Border.all(
             color: context.borderColor,
             width: 0.5,
@@ -51,56 +61,61 @@ class SystemCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header with title, status, and actions
-            Row(
-              children: [
-                // Status indicator
-                Container(
-                  width: 8,
-                  height: 8,
-                  decoration: BoxDecoration(
-                    color: isOnline ? AppColors.success : AppColors.error,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                // Title
-                Expanded(
-                  child: Text(
-                    title,
-                    style: TextStyle(
-                      color: context.textColor,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8.0),
+              child: Row(
+                children: [
+                  // Status indicator
+                  Container(
+                    width: 10,
+                    height: 10,
+                    decoration: BoxDecoration(
+                      color: AppColors.success,
+                      shape: BoxShape.circle,
                     ),
                   ),
-                ),
-                // Notification button
-                CupertinoButton(
-                  padding: EdgeInsets.zero,
-                  onPressed: onNotificationTap,
-                  child: Icon(
-                    CupertinoIcons.bell,
-                    color: context.textColor,
-                    size: 18,
+                  const SizedBox(width: 8),
+                  // Title
+                  Expanded(
+                    child: Text(
+                      title,
+                      style: TextStyle(
+                        color: context.textColor,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
-                ),
-                const SizedBox(width: 4),
-                // Menu button
-                CupertinoButton(
-                  padding: EdgeInsets.zero,
-                  onPressed: onMenuTap,
-                  child: Icon(
-                    CupertinoIcons.ellipsis,
-                    color: context.textColor,
-                    size: 18,
+                  CupertinoButton(
+                    padding: EdgeInsets.zero,
+                    onPressed: onNotificationTap,
+                    child: Icon(
+                      CupertinoIcons.bell,
+                      color: context.textColor,
+                      size: 20,
+                    ),
                   ),
-                ),
-              ],
+                  const SizedBox(width: 4),
+                  CupertinoButton(
+                    padding: EdgeInsets.zero,
+                    onPressed: onMenuTap,
+                    child: Icon(
+                      CupertinoIcons.ellipsis,
+                      color: context.textColor,
+                      size: 20,
+                    ),
+                  ),
+                ],
+              ),
             ),
-            
+            // Divider line below header
+            Container(
+              width: double.infinity,
+              height: 1,
+              color: context.borderColor.withOpacity(0.2),
+            ),
             const SizedBox(height: AppDimensions.paddingM),
-            
+
             // Metrics
             Column(
               children: [
@@ -175,20 +190,13 @@ class SystemCard extends StatelessWidget {
   ) {
     return Row(
       children: [
-        Icon(
-          icon,
-          color: context.secondaryTextColor,
-          size: 16,
-        ),
+        Icon(icon, color: context.secondaryTextColor, size: 16),
         const SizedBox(width: 8),
         SizedBox(
           width: 60,
           child: Text(
             label,
-            style: TextStyle(
-              color: context.secondaryTextColor,
-              fontSize: 14,
-            ),
+            style: TextStyle(color: context.secondaryTextColor, fontSize: 14),
           ),
         ),
         const SizedBox(width: 12),
@@ -235,20 +243,13 @@ class SystemCard extends StatelessWidget {
   ) {
     return Row(
       children: [
-        Icon(
-          icon,
-          color: context.secondaryTextColor,
-          size: 16,
-        ),
+        Icon(icon, color: context.secondaryTextColor, size: 16),
         const SizedBox(width: 8),
         SizedBox(
           width: 60,
           child: Text(
             label,
-            style: TextStyle(
-              color: context.secondaryTextColor,
-              fontSize: 14,
-            ),
+            style: TextStyle(color: context.secondaryTextColor, fontSize: 14),
           ),
         ),
         const SizedBox(width: 12),
@@ -267,20 +268,13 @@ class SystemCard extends StatelessWidget {
   Widget _buildAgentRow(BuildContext context) {
     return Row(
       children: [
-        Icon(
-          CupertinoIcons.wifi,
-          color: context.secondaryTextColor,
-          size: 16,
-        ),
+        Icon(CupertinoIcons.wifi, color: context.secondaryTextColor, size: 16),
         const SizedBox(width: 8),
         SizedBox(
           width: 60,
           child: Text(
             'Agent:',
-            style: TextStyle(
-              color: context.secondaryTextColor,
-              fontSize: 14,
-            ),
+            style: TextStyle(color: context.secondaryTextColor, fontSize: 14),
           ),
         ),
         const SizedBox(width: 12),

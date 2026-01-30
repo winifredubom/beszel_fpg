@@ -1,5 +1,8 @@
+import 'package:beszel_fpg/core/constants/app_constants.dart';
+import 'package:beszel_fpg/core/network/error_helper.dart';
 import 'package:beszel_fpg/core/theme/theme_extensions.dart';
 import 'package:beszel_fpg/features/authentication/presentation/pages/forgot_password_page.dart';
+import 'package:beszel_fpg/features/authentication/service/auth_service.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -79,8 +82,50 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 const SizedBox(height: 24),
                 LoginButton(
                   text: 'Sign in',
-                  onPressed: () {
-                    // TODO: Implement authentication logic
+                  onPressed: () async {
+                    final credentials = {
+                      'identity': _emailController.text.trim(),
+                      'password': _passwordController.text,
+                    };
+                    final loginFuture = ref.read(
+                      loginProvider(credentials).future,
+                    );
+
+                    showDialog(
+                      context: context,
+                      barrierDismissible: false,
+                      builder: (_) =>
+                          const Center(child: CircularProgressIndicator()),
+                    );
+
+                    try {
+                       await loginFuture;
+                      if (context.mounted) {
+                       // Navigator.of(context).pop(); // Remove loading dialog
+                        context.go(
+                          AppRoutes.dashboard,
+                        );
+                      }
+                    } catch (e, stack) {
+                      if (context.mounted) {
+                        Navigator.of(context).pop(); // Remove loading dialog
+                        showDialog(
+                          context: context,
+                          builder: (_) => Dialog(
+                            child: Padding(
+                              padding: const EdgeInsets.all(16.0),
+                              child: ErrorView(
+                                error: e,
+                                stackTrace: stack,
+                                onRetry: () {
+                                  Navigator.of(context).pop();
+                                },
+                              ),
+                            ),
+                          ),
+                        );
+                      }
+                    }
                   },
                 ),
                 const SizedBox(height: 16),
