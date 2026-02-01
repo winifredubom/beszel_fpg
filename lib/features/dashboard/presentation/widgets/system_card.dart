@@ -21,6 +21,14 @@ class SystemCard extends StatelessWidget {
     this.onTap,
     this.onNotificationTap,
     this.onMenuTap,
+    this.showCpu = true,
+    this.showMemory = true,
+    this.showDisk = true,
+    this.showGpu = true,
+    this.showNetwork = true,
+    this.showTemperature = true,
+    this.showAgentVersion = true,
+    this.showActions = true,
   });
 
   final String title;
@@ -35,6 +43,16 @@ class SystemCard extends StatelessWidget {
   final VoidCallback? onTap;
   final VoidCallback? onNotificationTap;
   final VoidCallback? onMenuTap;
+  
+  // Visibility toggles
+  final bool showCpu;
+  final bool showMemory;
+  final bool showDisk;
+  final bool showGpu;
+  final bool showNetwork;
+  final bool showTemperature;
+  final bool showAgentVersion;
+  final bool showActions;
 
   @override
   Widget build(BuildContext context) {
@@ -86,25 +104,27 @@ class SystemCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                  CupertinoButton(
-                    padding: EdgeInsets.zero,
-                    onPressed: onNotificationTap,
-                    child: Icon(
-                      CupertinoIcons.bell,
-                      color: context.textColor,
-                      size: 20,
+                  if (showActions) ...[
+                    CupertinoButton(
+                      padding: EdgeInsets.zero,
+                      onPressed: onNotificationTap,
+                      child: Icon(
+                        CupertinoIcons.bell,
+                        color: context.textColor,
+                        size: 20,
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 4),
-                  CupertinoButton(
-                    padding: EdgeInsets.zero,
-                    onPressed: onMenuTap,
-                    child: Icon(
-                      CupertinoIcons.ellipsis,
-                      color: context.textColor,
-                      size: 20,
+                    const SizedBox(width: 4),
+                    CupertinoButton(
+                      padding: EdgeInsets.zero,
+                      onPressed: onMenuTap,
+                      child: Icon(
+                        CupertinoIcons.ellipsis,
+                        color: context.textColor,
+                        size: 20,
+                      ),
                     ),
-                  ),
+                  ],
                 ],
               ),
             ),
@@ -119,59 +139,70 @@ class SystemCard extends StatelessWidget {
             // Metrics
             Column(
               children: [
-                _buildMetricRow(
-                  context,
-                  CupertinoIcons.device_laptop,
-                  'CPU:',
-                  '${cpuUsage.toStringAsFixed(1)}%',
-                  cpuUsage,
-                  AppColors.cpuColor,
-                ),
-                const SizedBox(height: 8),
-                _buildMetricRow(
-                  context,
-                  CupertinoIcons.memories,
-                  'Memory:',
-                  '${memoryUsage.toStringAsFixed(1)}%',
-                  memoryUsage,
-                  AppColors.memoryColor,
-                ),
-                const SizedBox(height: 8),
-                _buildMetricRow(
-                  context,
-                  CupertinoIcons.device_laptop,
-                  'Disk:',
-                  '${diskUsage.toStringAsFixed(1)}%',
-                  diskUsage,
-                  _getDiskColor(diskUsage),
-                ),
-                const SizedBox(height: 8),
-                _buildMetricRow(
-                  context,
-                  CupertinoIcons.tv,
-                  'GPU:',
-                  '${gpuUsage.toStringAsFixed(1)}%',
-                  gpuUsage,
-                  AppColors.secondaryColor,
-                ),
-                const SizedBox(height: 8),
-                _buildMetricRowText(
-                  context,
-                  CupertinoIcons.wifi,
-                  'Net:',
-                  networkUsage,
-                ),
-                if (temperature != null) ...[
+                if (showCpu) ...[
+                  _buildMetricRow(
+                    context,
+                    CupertinoIcons.device_laptop,
+                    'CPU:',
+                    '${cpuUsage.toStringAsFixed(1)}%',
+                    cpuUsage,
+                    AppColors.cpuColor,
+                  ),
                   const SizedBox(height: 8),
+                ],
+                if (showMemory) ...[
+                  _buildMetricRow(
+                    context,
+                    CupertinoIcons.memories,
+                    'Memory:',
+                    '${memoryUsage.toStringAsFixed(1)}%',
+                    memoryUsage,
+                    AppColors.memoryColor,
+                  ),
+                  const SizedBox(height: 8),
+                ],
+                if (showDisk) ...[
+                  _buildMetricRow(
+                    context,
+                    CupertinoIcons.device_laptop,
+                    'Disk:',
+                    '${diskUsage.toStringAsFixed(1)}%',
+                    diskUsage,
+                    _getDiskColor(diskUsage),
+                  ),
+                  const SizedBox(height: 8),
+                ],
+                if (showGpu) ...[
+                  _buildMetricRow(
+                    context,
+                    CupertinoIcons.tv,
+                    'GPU:',
+                    '${gpuUsage.toStringAsFixed(1)}%',
+                    gpuUsage,
+                    AppColors.secondaryColor,
+                  ),
+                  const SizedBox(height: 8),
+                ],
+                if (showNetwork) ...[
+                  _buildMetricRowText(
+                    context,
+                    CupertinoIcons.wifi,
+                    'Net:',
+                    networkUsage,
+                  ),
+                  const SizedBox(height: 8),
+                ],
+                if (showTemperature && temperature != null) ...[
                   _buildMetricRowText(
                     context,
                     CupertinoIcons.thermometer,
                     'Temp:',
                     temperature!,
                   ),
+                  const SizedBox(height: 8),
                 ],
-                const SizedBox(height: 8),
-                _buildAgentRow(context),
+                if (showAgentVersion)
+                  _buildAgentRow(context),
               ],
             ),
           ],

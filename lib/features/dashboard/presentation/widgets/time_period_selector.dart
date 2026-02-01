@@ -1,7 +1,6 @@
 import 'package:beszel_fpg/core/theme/theme_extensions.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import '../../../../core/theme/app_theme.dart';
 import '../../../../core/constants/app_constants.dart';
 
 class TimePeriodSelector extends StatelessWidget {
@@ -16,9 +15,10 @@ class TimePeriodSelector extends StatelessWidget {
 
   static const List<String> periods = [
     '1 hour',
-    '6 hours',
     '12 hours',
     '24 hours',
+    '1 week',
+    '30 days',
   ];
 
   @override

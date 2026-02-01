@@ -1,6 +1,7 @@
 import 'package:beszel_fpg/features/authentication/presentation/pages/forgot_password_page.dart';
 import 'package:beszel_fpg/features/authentication/presentation/pages/login_page.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../features/dashboard/presentation/pages/dashboard_page.dart';
@@ -9,6 +10,7 @@ import '../constants/app_constants.dart';
 
 final GoRouter appRouter = GoRouter(
   initialLocation: AppRoutes.login,
+  debugLogDiagnostics: true, // Enable debug logging
   routes: [
      GoRoute(
       path: AppRoutes.login,
@@ -37,10 +39,15 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: AppRoutes.systemsBoard,
       name: 'systems-board',
-      pageBuilder: (context, state) => CupertinoPage<void>(
-        key: state.pageKey,
-        child: const SystemsBoard(),
-      ),
+      pageBuilder: (context, state) {
+        final systemId = state.uri.queryParameters['systemId'];
+        debugPrint('🛣️ Router: systemId from query = $systemId');
+        debugPrint('🛣️ Router: full URI = ${state.uri}');
+        return CupertinoPage<void>(
+          key: state.pageKey,
+          child: SystemsBoard(systemId: systemId),
+        );
+      },
     ),
     GoRoute(
       path: AppRoutes.settings,

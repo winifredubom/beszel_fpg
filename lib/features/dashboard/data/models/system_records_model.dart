@@ -55,12 +55,12 @@ class SystemRecordItem {
 
   factory SystemRecordItem.fromJson(Map<String, dynamic> json) {
     return SystemRecordItem(
-      host: json['host'] as String,
-      id: json['id'] as String,
+      host: json['host'] as String ?? '', 
+      id: json['id'] as String ?? '',
       info: SystemInfo.fromJson(json['info']),
-      name: json['name'] as String,
-      port: json['port'] as String,
-      status: json['status'] as String,
+      name: json['name'] as String ?? '',
+      port: json['port'] as String?? '',
+      status: json['status'] as String ?? '',
     );
   }
 
@@ -107,18 +107,18 @@ class SystemInfo {
 
   factory SystemInfo.fromJson(Map<String, dynamic> json) {
     return SystemInfo(
-      b: (json['b'] as num).toDouble(),
-      c: json['c'] as int,
-      cpu: (json['cpu'] as num).toDouble(),
-      dp: (json['dp'] as num).toDouble(),
-      h: json['h'] as String,
-      k: json['k'] as String,
-      m: json['m'] as String,
-      mp: (json['mp'] as num).toDouble(),
-      os: json['os'] as int,
-      t: json['t'] as int,
-      u: json['u'] as int,
-      v: json['v'] as String,
+      b: (json['b'] as num?)?.toDouble() ?? 0.0,
+      c: json['c'] as int? ?? 0,
+      cpu: (json['cpu'] as num?)?.toDouble() ?? 0.0,
+      dp: (json['dp'] as num?)?.toDouble() ?? 0.0,
+      h: json['h'] as String? ?? '',
+      k: json['k'] as String? ?? '',
+      m: json['m'] as String? ?? '',
+      mp: (json['mp'] as num?)?.toDouble() ?? 0.0,
+      os: json['os'] as int? ?? 0,
+      t: json['t'] as int? ?? 0,
+      u: json['u'] as int? ?? 0,
+      v: json['v'] as String? ?? '',
     );
   }
 

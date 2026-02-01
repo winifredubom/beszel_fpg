@@ -1,10 +1,11 @@
 // ignore_for_file: deprecated_member_use
 
-import 'package:beszel_fpg/features/dashboard/data/models/system_records_model.dart';
 import 'package:beszel_fpg/features/dashboard/data/service/system_records.dart';
+import 'package:beszel_fpg/core/network/realtime_service.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/theme/theme_manager.dart';
@@ -12,27 +13,69 @@ import '../../../../core/theme/theme_extensions.dart';
 import '../widgets/system_card.dart';
 import '../widgets/add_system_dialog.dart';
 import '../widgets/custom_app_bar.dart';
+import '../widgets/view_options_popup.dart';
 
-class DashboardPage extends ConsumerWidget {
+/// Provider for filter text state
+final filterTextProvider = StateProvider<String>((ref) => '');
+
+class DashboardPage extends ConsumerStatefulWidget {
   const DashboardPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    String _filterText = '';
-    final systemRecordsAsync = ref.watch(systemRecordsProvider);
+  ConsumerState<DashboardPage> createState() => _DashboardPageState();
+}
 
-    List<SystemRecordItem> filteredItems = [];
-    systemRecordsAsync.whenData((data) {
-      filteredItems = _filterText.isEmpty
-          ? data.items
-          : data.items
-                .where(
-                  (item) => item.name.toLowerCase().contains(
-                    _filterText.toLowerCase(),
-                  ),
-                )
-                .toList();
-    });
+class _DashboardPageState extends ConsumerState<DashboardPage> with WidgetsBindingObserver {
+  final GlobalKey _viewButtonKey = GlobalKey();
+  late final RealtimeService _realtimeService;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    // Save reference to realtime service before potential dispose
+    _realtimeService = ref.read(realtimeServiceProvider);
+    // Connect to realtime on page load
+    _connectRealtime();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    // Use saved reference instead of ref.read() which is unsafe in dispose
+   // _realtimeService.disconnect();
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // Reconnect when app comes to foreground
+      if (!_realtimeService.isConnected) {
+        _connectRealtime();
+      }
+    } else if (state == AppLifecycleState.paused) {
+      // Disconnect when app goes to background (save battery)
+      _realtimeService.disconnect();
+    }
+  }
+
+  void _connectRealtime() {
+    if (!_realtimeService.isConnected) {
+      _realtimeService.connect().catchError((e) {
+        debugPrint('❌ Failed to connect realtime: $e');
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Watch the live realtime stream
+    final liveSystemsAsync = ref.watch(liveSystemRecordsProvider);
+    final realtimeConnection = ref.watch(realtimeConnectionProvider);
+    final filterText = ref.watch(filterTextProvider);
+    final sortOption = ref.watch(sortOptionProvider);
+    final visibleFields = ref.watch(visibleFieldsProvider);
 
     return ListenableBuilder(
       listenable: ThemeManager.instance,
@@ -49,10 +92,9 @@ class DashboardPage extends ConsumerWidget {
                       slivers: [
                         CupertinoSliverRefreshControl(
                           onRefresh: () async {
-                            // Refresh the provider
-                            ref.invalidate(systemRecordsProvider);
-                            // Wait for the new data to load
-                            await ref.read(systemRecordsProvider.future);
+                            // Reconnect realtime and refresh
+                            final realtimeService = ref.read(realtimeServiceProvider);
+                            await realtimeService.reconnect();
                           },
                         ),
                         // Add top padding to account for floating app bar
@@ -65,13 +107,42 @@ class DashboardPage extends ConsumerWidget {
                               Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(
-                                    'All Systems',
-                                    style: TextStyle(
-                                      color: context.textColor,
-                                      fontSize: 28,
-                                      fontWeight: FontWeight.bold,
-                                    ),
+                                  Row(
+                                    children: [
+                                      Text(
+                                        'All Systems',
+                                        style: TextStyle(
+                                          color: context.textColor,
+                                          fontSize: 28,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      // Realtime connection indicator
+                                      realtimeConnection.when(
+                                        data: (connected) => Container(
+                                          width: 8,
+                                          height: 8,
+                                          decoration: BoxDecoration(
+                                            color: connected ? Colors.green : Colors.orange,
+                                            shape: BoxShape.circle,
+                                          ),
+                                        ),
+                                        loading: () => const SizedBox(
+                                          width: 8,
+                                          height: 8,
+                                          child: CupertinoActivityIndicator(radius: 4),
+                                        ),
+                                        error: (_, __) => Container(
+                                          width: 8,
+                                          height: 8,
+                                          decoration: const BoxDecoration(
+                                            color: Colors.red,
+                                            shape: BoxShape.circle,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                   const SizedBox(height: 8),
                                   Text(
@@ -123,8 +194,7 @@ class DashboardPage extends ConsumerWidget {
                                               decoration: null,
                                               padding: EdgeInsets.zero,
                                               onChanged: (value) {
-                                                // You need to use a StateProvider for _filterText
-                                                //ref.read(filterTextProvider.notifier).state = value;
+                                                ref.read(filterTextProvider.notifier).state = value;
                                               },
                                             ),
                                           ),
@@ -134,81 +204,160 @@ class DashboardPage extends ConsumerWidget {
                                   ),
                                   const SizedBox(width: 12),
                                   // View toggle button
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 16,
-                                      vertical: 12,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: context.surfaceColor,
-                                      borderRadius: BorderRadius.circular(12),
-                                      border: Border.all(
-                                        color: context.borderColor,
-                                        width: 0.5,
+                                  GestureDetector(
+                                    key: _viewButtonKey,
+                                    onTap: () {
+                                      showViewOptionsPopup(context, _viewButtonKey);
+                                    },
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 16,
+                                        vertical: 12,
                                       ),
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Icon(
-                                          CupertinoIcons.rectangle_grid_1x2,
-                                          color: context.textColor,
-                                          size: 16,
+                                      decoration: BoxDecoration(
+                                        color: context.surfaceColor,
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(
+                                          color: context.borderColor,
+                                          width: 0.5,
                                         ),
-                                        const SizedBox(width: 8),
-                                        Text(
-                                          'View',
-                                          style: TextStyle(
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(
+                                            CupertinoIcons.slider_horizontal_3,
                                             color: context.textColor,
-                                            fontSize: 16,
+                                            size: 16,
                                           ),
-                                        ),
-                                      ],
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            'View',
+                                            style: TextStyle(
+                                              color: context.textColor,
+                                              fontSize: 16,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   ),
                                 ],
                               ),
                               const SizedBox(height: AppDimensions.paddingL),
-                              // Systems List
-                              systemRecordsAsync.when(
+                              // Systems List - Now using realtime stream
+                              liveSystemsAsync.when(
                                 loading: () => const Center(
                                   child: CupertinoActivityIndicator(),
                                 ),
                                 error: (e, stack) =>
                                     Center(child: Text('Error: $e')),
-                                data: (_) => Column(
-                                  children: filteredItems
-                                      .map(
-                                        (item) => SystemCard(
-                                          title: item.name,
-                                          isOnline: item.status == 'online',
-                                          cpuUsage: item.info.cpu,
-                                          memoryUsage: item.info.m != null
-                                              ? double.tryParse(item.info.m) ??
-                                                    0
-                                              : 0,
-                                          diskUsage: item.info.dp,
-                                          gpuUsage: 0, // Map as needed
-                                          networkUsage: '', // Map as needed
-                                          temperature: '', // Map as needed
-                                          agentVersion: item.info.v,
-                                          onTap: () {
-                                            context.go(
-                                              '${AppRoutes.systemsBoard}?systemId=${item.id}',
-                                            );
-                                          },
-                                          onNotificationTap: () {
-                                            print(
-                                              'Notification for ${item.name}',
-                                            );
-                                          },
-                                          onMenuTap: () {
-                                            print('Menu for ${item.name}');
-                                          },
+                                data: (items) {
+                                  // Filter systems based on filter text
+                                  var filteredItems = filterText.isEmpty
+                                      ? items.toList()
+                                      : items
+                                          .where((item) => item.name
+                                              .toLowerCase()
+                                              .contains(filterText.toLowerCase()))
+                                          .toList();
+                                  
+                                  // Sort systems based on sort option
+                                  filteredItems.sort((a, b) {
+                                    switch (sortOption) {
+                                      case SortOption.systemAsc:
+                                        return a.name.toLowerCase().compareTo(b.name.toLowerCase());
+                                      case SortOption.systemDesc:
+                                        return b.name.toLowerCase().compareTo(a.name.toLowerCase());
+                                      case SortOption.cpuAsc:
+                                        return a.info.cpu.compareTo(b.info.cpu);
+                                      case SortOption.cpuDesc:
+                                        return b.info.cpu.compareTo(a.info.cpu);
+                                      case SortOption.memoryAsc:
+                                        return a.info.mp.compareTo(b.info.mp);
+                                      case SortOption.memoryDesc:
+                                        return b.info.mp.compareTo(a.info.mp);
+                                      case SortOption.diskAsc:
+                                        return a.info.dp.compareTo(b.info.dp);
+                                      case SortOption.diskDesc:
+                                        return b.info.dp.compareTo(a.info.dp);
+                                      case SortOption.gpuAsc:
+                                        return a.info.os.compareTo(a.info.os); 
+                                      case SortOption.gpuDesc:
+                                        return b.info.os.compareTo(b.info.os); 
+                                      case SortOption.netWorkAsc:
+                                        return a.info.u.compareTo(b.info.u); 
+                                      case SortOption.netWorkDesc:
+                                        return b.info.u.compareTo(b.info.u);
+                                      case SortOption.temperatureAsc:
+                                        return a.info.t.compareTo(b.info.t);    
+                                      case SortOption.temperatureDesc:
+                                        return b.info.t.compareTo(a.info.t);
+                                      case SortOption.agentVersionAsc:
+                                        return a.info.v.compareTo(b.info.v);  
+                                      case SortOption.agentVersionDesc:
+                                        return b.info.v.compareTo(a.info.v);           
+                                    }
+                                  });
+                                  
+                                  if (filteredItems.isEmpty) {
+                                    return Center(
+                                      child: Padding(
+                                        padding: const EdgeInsets.all(32.0),
+                                        child: Text(
+                                          filterText.isEmpty
+                                              ? 'No systems found'
+                                              : 'No systems matching "$filterText"',
+                                          style: TextStyle(
+                                            color: context.secondaryTextColor,
+                                            fontSize: 16,
+                                          ),
                                         ),
-                                      )
-                                      .toList(),
-                                ),
+                                      ),
+                                    );
+                                  }
+                                  
+                                  return Column(
+                                    children: filteredItems
+                                        .map(
+                                          (item) => SystemCard(
+                                            title: item.name,
+                                            isOnline: item.status == 'online' || item.status == 'up',
+                                            cpuUsage: item.info.cpu,
+                                            memoryUsage: item.info.mp,
+                                            diskUsage: item.info.dp,
+                                            gpuUsage: 0, // Map as needed
+                                            networkUsage: '', // Map as needed
+                                            temperature: '', // Map as needed
+                                            agentVersion: item.info.v,
+                                            showCpu: visibleFields.contains(VisibleField.cpu),
+                                            showMemory: visibleFields.contains(VisibleField.memory),
+                                            showDisk: visibleFields.contains(VisibleField.disk),
+                                            showGpu: visibleFields.contains(VisibleField.gpu),
+                                            showNetwork: visibleFields.contains(VisibleField.network),
+                                            showTemperature: visibleFields.contains(VisibleField.temperature),
+                                            showAgentVersion: visibleFields.contains(VisibleField.agentVersion),
+                                            showActions: visibleFields.contains(VisibleField.actions),
+                                            onTap: () {
+                                              debugPrint('🚀 Navigating to system: ${item.id}');
+                                              debugPrint('🚀 Full path: ${AppRoutes.systemsBoard}?systemId=${item.id}');
+                                              context.push(
+                                                '${AppRoutes.systemsBoard}?systemId=${item.id}',
+                                              );
+                                            },
+                                            onNotificationTap: () {
+                                              debugPrint(
+                                                'Notification for ${item.name}',
+                                              );
+                                            },
+                                            onMenuTap: () {
+                                              debugPrint('Menu for ${item.name}');
+                                            },
+                                          ),
+                                        )
+                                        .toList(),
+                                  );
+                                },
                               ),
                             ]),
                           ),
