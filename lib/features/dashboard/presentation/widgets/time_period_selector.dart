@@ -1,4 +1,5 @@
 import 'package:beszel_fpg/core/theme/theme_extensions.dart';
+import 'package:beszel_fpg/core/theme/theme_manager.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import '../../../../core/constants/app_constants.dart';
@@ -78,6 +79,8 @@ class TimePeriodSelector extends StatelessWidget {
   }
 
   void _showPicker(BuildContext context) {
+    final isDarkMode = ThemeManager.instance.isDarkMode;
+    
     showCupertinoModalPopup<String>(
       context: context,
       builder: (BuildContext context) => Container(
@@ -86,7 +89,9 @@ class TimePeriodSelector extends StatelessWidget {
         margin: EdgeInsets.only(
           bottom: MediaQuery.of(context).viewInsets.bottom,
         ),
-        color: CupertinoColors.systemBackground.resolveFrom(context),
+        color: isDarkMode 
+            ? const Color(0xFF1C1C1E) 
+            : CupertinoColors.white,
         child: SafeArea(
           top: false,
           child: CupertinoPicker(
@@ -104,9 +109,10 @@ class TimePeriodSelector extends StatelessWidget {
               return Center(
                 child: Text(
                   periods[index],
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 16,
                     fontFamily: '.SF Pro Text',
+                    color: isDarkMode ? Colors.white : Colors.black,
                   ),
                 ),
               );

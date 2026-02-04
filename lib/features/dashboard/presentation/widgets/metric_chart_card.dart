@@ -1,12 +1,45 @@
 // ignore_for_file: deprecated_member_use
 
+import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/theme/theme_extensions.dart';
 
-/// Configuration for chart axis based on time period
+// ============================================================================
+// ENUMS
+// ============================================================================
+
+/// Enum for different metric types with their own axis configurations
+enum MetricType {
+  cpu,           // CPU Usage
+  dockerCpu,     // Docker CPU Usage
+  memory,        // Memory Usage
+  dockerMemory,  // Docker Memory Usage
+  disk,          // Disk Usage
+  diskIO,        // Disk I/O
+  bandwidth,     // Bandwidth
+  dockerNetwork, // Docker Network I/O
+  generic,       // Generic metric
+}
+
+// ============================================================================
+// CHART AXIS CONFIGURATION
+// ============================================================================
+
+/// Configuration for chart axis based on time period and metric type
+/// 
+/// X-axis rules (5 labels max):
+/// - 1 hour: 5 min intervals (e.g., 12:00, 12:05, 12:10, 12:15, 12:20)
+/// - 12 hours: 1 hour intervals
+/// - 24 hours: 3 hour intervals
+/// - 1 week: 1 day intervals (e.g., 27 Jan, 28 Jan, 29 Jan, 30 Jan, 31 Jan)
+/// - 30 days: 2 day intervals (e.g., 5 Jan, 7 Jan, 9 Jan, 11 Jan, 13 Jan)
+/// 
+/// Y-axis rules for CPU (5 labels, starting from 0):
+/// - 1 hour, 24 hours, 1 week: +0.25% (0%, 0.25%, 0.5%, 0.75%, 1%)
+/// - 12 hours, 30 days: +0.3% (0%, 0.3%, 0.6%, 0.9%, 1.2%)
 class ChartAxisConfig {
   final double yAxisInterval;
   final int xAxisLabelCount;
@@ -20,70 +53,179 @@ class ChartAxisConfig {
     required this.xAxisFormatter,
   });
 
-  /// Get axis configuration based on selected time period
+  // --------------------------------------------------------------------------
+  // X-AXIS CONFIGURATION
+  // --------------------------------------------------------------------------
+
+  /// Get X-axis configuration based on selected time period
+  /// Always returns 6 labels for consistent display
   static ChartAxisConfig forPeriod(String period) {
     switch (period) {
       case '1 hour':
         return ChartAxisConfig(
-          yAxisInterval: 0.4, // 0%, 0.4%, 0.8%, 1.2%, etc.
-          xAxisLabelCount: 6,
+          yAxisInterval: 0.25,
+          xAxisLabelCount: 5,
           xAxisInterval: const Duration(minutes: 5),
           xAxisFormatter: (dt) => DateFormat('HH:mm').format(dt),
         );
-      case '3 hours':
-        return ChartAxisConfig(
-          yAxisInterval: 0.3,
-          xAxisLabelCount: 6,
-          xAxisInterval: const Duration(minutes: 30),
-          xAxisFormatter: (dt) => DateFormat('HH:mm').format(dt),
-        );
-      case '6 hours':
-        return ChartAxisConfig(
-          yAxisInterval: 0.3,
-          xAxisLabelCount: 6,
-          xAxisInterval: const Duration(hours: 1),
-          xAxisFormatter: (dt) => DateFormat('HH:mm').format(dt),
-        );
+      
       case '12 hours':
         return ChartAxisConfig(
-          yAxisInterval: 0.3, // 0%, 0.3%, 0.6%, 0.9%, etc.
-          xAxisLabelCount: 6,
+          yAxisInterval: 0.3,
+          xAxisLabelCount: 5,
           xAxisInterval: const Duration(hours: 1),
           xAxisFormatter: (dt) => DateFormat('H:00').format(dt),
         );
+      
       case '24 hours':
       case '1 day':
         return ChartAxisConfig(
-          yAxisInterval: 0.3, // 0%, 0.3%, 0.6%, 0.9%, etc.
-          xAxisLabelCount: 8,
+          yAxisInterval: 0.25,
+          xAxisLabelCount: 5,
           xAxisInterval: const Duration(hours: 3),
           xAxisFormatter: (dt) => DateFormat('HH:00').format(dt),
         );
+      
       case '1 week':
         return ChartAxisConfig(
-          yAxisInterval: 0.25, // 0%, 0.25%, 0.5%, 0.75%, etc.
-          xAxisLabelCount: 7,
+          yAxisInterval: 0.25,
+          xAxisLabelCount: 5,
           xAxisInterval: const Duration(days: 1),
           xAxisFormatter: (dt) => DateFormat('d MMM').format(dt),
         );
+      
       case '30 days':
       case '1 month':
         return ChartAxisConfig(
-          yAxisInterval: 0.3, // 0%, 0.3%, 0.6%, etc.
-          xAxisLabelCount: 8,
+          yAxisInterval: 0.3,
+          xAxisLabelCount: 5,
           xAxisInterval: const Duration(days: 2),
           xAxisFormatter: (dt) => DateFormat('d MMM').format(dt),
         );
+      
       default:
         return ChartAxisConfig(
-          yAxisInterval: 0.4,
-          xAxisLabelCount: 6,
-          xAxisInterval: const Duration(minutes: 10),
+          yAxisInterval: 0.25,
+          xAxisLabelCount: 5,
+          xAxisInterval: const Duration(minutes: 5),
           xAxisFormatter: (dt) => DateFormat('HH:mm').format(dt),
         );
     }
   }
+
+  // --------------------------------------------------------------------------
+  // Y-AXIS CONFIGURATION
+  // --------------------------------------------------------------------------
+
+  /// Get Y-axis interval for CPU Usage based on time period
+  /// - 1 hour: 0.35% (0%, 0.35%, 0.70%, 1.05%, 1.40%)
+  /// - 12 hours, 24 hours, 1 week, 30 days: 0.3% (0%, 0.3%, 0.6%, 0.9%, 1.2%)
+  static double getCpuYAxisInterval(String period) {
+    switch (period) {
+      case '1 hour':
+        return 0.35;
+      case '12 hours':
+      case '24 hours':
+      case '1 day':
+      case '1 week':
+      case '30 days':
+      case '1 month':
+        return 0.3;
+      default:
+        return 0.35;
+    }
+  }
+
+  /// Get Y-axis interval for Docker CPU Usage based on time period
+  /// - 1 hour: +0.09% (0%, 0.09%, 0.18%, 0.27%, 0.36%)
+  /// - 12 hours: +0.15% (0%, 0.15%, 0.30%, 0.45%, 0.60%)
+  /// - 24 hours: +0.15% (0%, 0.15%, 0.30%, 0.45%, 0.60%)
+  /// - 1 week: +0.09% (0%, 0.09%, 0.18%, 0.27%, 0.36%)
+  /// - 30 days: +0.1% (0%, 0.1%, 0.2%, 0.3%, 0.4%)
+  static double getDockerCpuYAxisInterval(String period) {
+    switch (period) {
+      case '1 hour':
+        return 0.09;
+      case '12 hours':
+        return 0.15;
+      case '24 hours':
+      case '1 day':
+        return 0.15;
+      case '1 week':
+        return 0.09;
+      case '30 days':
+      case '1 month':
+        return 0.1;
+      default:
+        return 0.09;
+    }
+  }
+
+  /// Get Y-axis interval for Memory Usage
+  /// Always 4 GB intervals regardless of time period
+  /// Y-axis: 0 GB, 4 GB, 8 GB, 12 GB, 16 GB...
+  static double getMemoryYAxisInterval(String period) {
+    return 4.0; // Always 4 GB intervals
+  }
+
+  /// Get Y-axis interval for Disk Usage
+  /// Always 120 GB intervals regardless of time period
+  /// Y-axis: 0 GB, 120 GB, 240 GB, 360 GB, 480 GB...
+  static double getDiskYAxisInterval(String period) {
+    return 120.0; // Always 120 GB intervals
+  }
+
+  /// Get Y-axis interval for Disk I/O based on time period
+  /// - 1 hour, 1 week, 30 days: 0.025 MB/s (0, 0.025, 0.05, 0.075, 0.1)
+  /// - 12 hours, 24 hours: 0.05 MB/s (0, 0.05, 0.1, 0.15, 0.2)
+  static double getDiskIOYAxisInterval(String period) {
+    switch (period) {
+      case '1 hour':
+      case '1 week':
+      case '30 days':
+      case '1 month':
+        return 0.025;
+      case '12 hours':
+      case '24 hours':
+      case '1 day':
+        return 0.05;
+      default:
+        return 0.025;
+    }
+  }
+
+  /// Get Y-axis interval for Bandwidth based on time period
+  /// All periods use 0.01 MB/s intervals
+  static double getBandwidthYAxisInterval(String period) {
+    return 0.01; // Always 0.01 MB/s intervals
+  }
+
+  /// Get Y-axis interval based on metric type and period
+  static double getYAxisInterval(MetricType metricType, String period) {
+    switch (metricType) {
+      case MetricType.cpu:
+        return getCpuYAxisInterval(period);
+      case MetricType.dockerCpu:
+        return getDockerCpuYAxisInterval(period);
+      case MetricType.memory:
+        return getMemoryYAxisInterval(period);
+      case MetricType.disk:
+        return getDiskYAxisInterval(period);
+      case MetricType.diskIO:
+        return getDiskIOYAxisInterval(period);
+      case MetricType.bandwidth:
+        return getBandwidthYAxisInterval(period);
+      case MetricType.dockerMemory:
+      case MetricType.dockerNetwork:
+      case MetricType.generic:
+        return getCpuYAxisInterval(period);
+    }
+  }
 }
+
+// ============================================================================
+// METRIC CHART CARD WIDGET
+// ============================================================================
 
 class MetricChartCard extends StatelessWidget {
   final String title;
@@ -96,7 +238,8 @@ class MetricChartCard extends StatelessWidget {
   final String selectedPeriod;
   final bool hasFilter;
   final bool showAreaChart;
-  final String unit; // e.g., '%', 'GB', 'MB/s'
+  final String unit;
+  final MetricType metricType;
 
   const MetricChartCard({
     super.key,
@@ -111,17 +254,24 @@ class MetricChartCard extends StatelessWidget {
     this.hasFilter = false,
     this.showAreaChart = false,
     this.unit = '%',
+    this.metricType = MetricType.cpu,
   });
 
   @override
   Widget build(BuildContext context) {
     final axisConfig = ChartAxisConfig.forPeriod(selectedPeriod);
     
-    // Generate time labels based on period
-    final timeLabels = _generateTimeLabels(axisConfig);
+    // Get Y-axis interval based on metric type and period
+    final yAxisInterval = ChartAxisConfig.getYAxisInterval(metricType, selectedPeriod);
     
-    // Generate Y-axis labels based on data range
-    final yAxisLabels = _generateYAxisLabels(axisConfig);
+    // Calculate Y-axis max based on actual data
+    // Must be at least enough to show the data, using clean interval multiples
+    final maxDataValue = data.isEmpty ? 0.0 : data.reduce((a, b) => a > b ? a : b);
+    
+    // Calculate how many intervals we need to fit the data (minimum 4 intervals = 5 labels)
+    final intervalsNeeded = maxDataValue <= 0 ? 4 : (maxDataValue / yAxisInterval).ceil();
+    final numIntervals = intervalsNeeded < 4 ? 4 : intervalsNeeded;
+    final yAxisMax = yAxisInterval * numIntervals;
     
     return Container(
       decoration: BoxDecoration(
@@ -147,147 +297,13 @@ class MetricChartCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Header
-            Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: context.textColor,
-                          fontFamily: '.SF Pro Display',
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        subtitle,
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: context.secondaryTextColor,
-                          fontFamily: '.SF Pro Text',
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                if (hasFilter)
-                  CupertinoButton(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppDimensions.paddingM,
-                      vertical: AppDimensions.paddingS,
-                    ),
-                    color: context.backgroundColor,
-                    borderRadius: BorderRadius.circular(AppDimensions.radiusS),
-                    onPressed: () {
-                      // Handle filter action
-                    },
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          CupertinoIcons.slider_horizontal_3,
-                          color: context.secondaryTextColor,
-                          size: 14,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          'Filter',
-                          style: TextStyle(
-                            color: context.secondaryTextColor,
-                            fontSize: 12,
-                            fontFamily: '.SF Pro Text',
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-              ],
-            ),
+            _buildHeader(context),
+            const SizedBox(height: AppDimensions.paddingL),
             
-            const SizedBox(height: AppDimensions.paddingM),
-            
-            // Current Value Display
-            // Text(
-            //   currentValue,
-            //   style: TextStyle(
-            //     fontSize: 24,
-            //     fontWeight: FontWeight.bold,
-            //     color: chartColor,
-            //     fontFamily: '.SF Pro Display',
-            //   ),
-            // ),
-            
-            const SizedBox(height: AppDimensions.paddingM),
-            
-            // Chart Area with Y-axis
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Y-axis labels
-                SizedBox(
-                  width: 40,
-                  height: AppDimensions.chartHeight,
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: yAxisLabels.reversed.map((label) {
-                      return Text(
-                        label,
-                        style: TextStyle(
-                          color: context.secondaryTextColor,
-                          fontSize: 10,
-                          fontFamily: '.SF Pro Text',
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                // Chart
-                Expanded(
-                  child: SizedBox(
-                    height: AppDimensions.chartHeight,
-                    child: CustomPaint(
-                      size: const Size(double.infinity, AppDimensions.chartHeight),
-                      painter: showAreaChart 
-                          ? AreaChartPainter(
-                              data: data,
-                              color: chartColor,
-                              yAxisLabels: yAxisLabels,
-                            )
-                          : LineChartPainter(
-                              data: data,
-                              color: chartColor,
-                              yAxisLabels: yAxisLabels,
-                            ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            
-            const SizedBox(height: AppDimensions.paddingS),
-            
-            // Time labels (X-axis)
-            Padding(
-              padding: const EdgeInsets.only(left: 48), // Align with chart
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: timeLabels.map((label) {
-                  return Text(
-                    label,
-                    style: TextStyle(
-                      color: context.secondaryTextColor,
-                      fontSize: 10,
-                      fontFamily: '.SF Pro Text',
-                    ),
-                  );
-                }).toList(),
-              ),
+            // Chart
+            SizedBox(
+              height: AppDimensions.chartHeight,
+              child: _buildChart(context, axisConfig, yAxisInterval, yAxisMax),
             ),
           ],
         ),
@@ -295,319 +311,363 @@ class MetricChartCard extends StatelessWidget {
     );
   }
 
-  /// Generate Y-axis labels based on data range and axis config
-  List<String> _generateYAxisLabels(ChartAxisConfig config) {
+  // --------------------------------------------------------------------------
+  // UI BUILDERS
+  // --------------------------------------------------------------------------
+
+  Widget _buildHeader(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: context.textColor,
+                  fontFamily: '.SF Pro Display',
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                subtitle,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: context.secondaryTextColor,
+                  fontFamily: '.SF Pro Text',
+                ),
+              ),
+            ],
+          ),
+        ),
+        if (hasFilter) _buildFilterButton(context),
+      ],
+    );
+  }
+
+  Widget _buildFilterButton(BuildContext context) {
+    return CupertinoButton(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppDimensions.paddingM,
+        vertical: AppDimensions.paddingS,
+      ),
+      color: context.backgroundColor,
+      borderRadius: BorderRadius.circular(AppDimensions.radiusS),
+      onPressed: () {},
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            CupertinoIcons.slider_horizontal_3,
+            color: context.secondaryTextColor,
+            size: 14,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            'Filter',
+            style: TextStyle(
+              color: context.secondaryTextColor,
+              fontSize: 12,
+              fontFamily: '.SF Pro Text',
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // --------------------------------------------------------------------------
+  // FL_CHART IMPLEMENTATION
+  // --------------------------------------------------------------------------
+
+  Widget _buildChart(
+    BuildContext context,
+    ChartAxisConfig axisConfig,
+    double yAxisInterval,
+    double yAxisMax,
+  ) {
+    final spots = _createSpots();
+    final timeLabels = _generateTimeLabels(axisConfig);
+    
+    return LineChart(
+      LineChartData(
+        // Grid configuration
+        gridData: FlGridData(
+          show: true,
+          drawVerticalLine: false,
+          horizontalInterval: yAxisInterval,
+          getDrawingHorizontalLine: (value) {
+            return FlLine(
+              color: chartColor.withOpacity(0.15),
+              strokeWidth: 1,
+            );
+          },
+        ),
+        
+        // Titles (axis labels)
+        titlesData: FlTitlesData(
+          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          
+          // Y-axis labels (left)
+          leftTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              reservedSize: 50,
+              interval: yAxisInterval,
+              getTitlesWidget: (value, meta) {
+                // Only show labels at interval positions
+                if (value < 0 || value > yAxisMax + 0.001) {
+                  return const SizedBox.shrink();
+                }
+                return Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: Text(
+                    _formatYAxisLabel(value),
+                    style: TextStyle(
+                      color: context.secondaryTextColor,
+                      fontSize: 10,
+                      fontFamily: '.SF Pro Text',
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+          
+          // X-axis labels (bottom) - exactly 5 labels
+          bottomTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              reservedSize: 30,
+              interval: data.length > 1 ? (data.length - 1) / 4 : 1,
+              getTitlesWidget: (value, meta) {
+                final dataLength = data.isEmpty ? 1 : data.length;
+                final maxIndex = dataLength - 1;
+                
+                // Calculate the 5 label positions (0, 25%, 50%, 75%, 100%)
+                final labelPositions = <int>{
+                  0,
+                  (maxIndex * 0.25).round(),
+                  (maxIndex * 0.5).round(),
+                  (maxIndex * 0.75).round(),
+                  maxIndex,
+                };
+                
+                final index = value.round();
+                
+                // Find which label index this corresponds to
+                if (labelPositions.contains(index)) {
+                  final labelIndex = labelPositions.toList().indexOf(index);
+                  if (labelIndex >= 0 && labelIndex < timeLabels.length) {
+                    return Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Text(
+                        timeLabels[labelIndex],
+                        style: TextStyle(
+                          color: context.secondaryTextColor,
+                          fontSize: 10,
+                          fontFamily: '.SF Pro Text',
+                        ),
+                      ),
+                    );
+                  }
+                }
+                return const SizedBox.shrink();
+              },
+            ),
+          ),
+        ),
+        
+        // Border
+        borderData: FlBorderData(show: false),
+        
+        // Axis bounds
+        minX: 0,
+        maxX: (data.length - 1).toDouble().clamp(1, double.infinity),
+        minY: 0,
+        maxY: yAxisMax,
+        
+        // Touch interaction with tooltip
+        lineTouchData: LineTouchData(
+          enabled: true,
+          touchTooltipData: LineTouchTooltipData(
+            getTooltipColor: (touchedSpot) => context.surfaceColor,
+            tooltipBorder: BorderSide(color: context.borderColor, width: 1),
+            tooltipRoundedRadius: 8,
+            tooltipPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            getTooltipItems: (touchedSpots) {
+              return touchedSpots.map((spot) {
+                return LineTooltipItem(
+                  '${spot.y.toStringAsFixed(2)}$unit',
+                  TextStyle(
+                    color: chartColor,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                    fontFamily: '.SF Pro Text',
+                  ),
+                );
+              }).toList();
+            },
+          ),
+          handleBuiltInTouches: true,
+          getTouchedSpotIndicator: (barData, spotIndexes) {
+            return spotIndexes.map((index) {
+              return TouchedSpotIndicatorData(
+                FlLine(color: chartColor.withOpacity(0.5), strokeWidth: 1),
+                FlDotData(
+                  show: true,
+                  getDotPainter: (spot, percent, barData, index) {
+                    return FlDotCirclePainter(
+                      radius: 6,
+                      color: chartColor,
+                      strokeWidth: 2,
+                      strokeColor: Colors.white,
+                    );
+                  },
+                ),
+              );
+            }).toList();
+          },
+        ),
+        
+        // Line data
+        lineBarsData: [
+          LineChartBarData(
+            spots: spots,
+            isCurved: true,
+            curveSmoothness: 0.25,
+            color: chartColor,
+            barWidth: 2.5,
+            isStrokeCapRound: true,
+            dotData: const FlDotData(show: false),
+            belowBarData: showAreaChart
+                ? BarAreaData(
+                    show: true,
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        chartColor.withOpacity(0.35),
+                        chartColor.withOpacity(0.05),
+                      ],
+                    ),
+                  )
+                : BarAreaData(show: false),
+          ),
+        ],
+      ),
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+    );
+  }
+
+  // --------------------------------------------------------------------------
+  // DATA HELPERS
+  // --------------------------------------------------------------------------
+
+  /// Convert data list to FlSpot list for fl_chart
+  List<FlSpot> _createSpots() {
     if (data.isEmpty) {
-      return ['0$unit'];
+      return [const FlSpot(0, 0)];
     }
     
-    final maxValue = data.reduce((a, b) => a > b ? a : b);
-    final minValue = 0.0; // Always start from 0
-    
-    // Calculate nice round max value for the axis
-    double axisMax;
-    if (maxValue <= 1) {
-      axisMax = 1.0;
-    } else if (maxValue <= 5) {
-      axisMax = 5.0;
-    } else if (maxValue <= 10) {
-      axisMax = 10.0;
-    } else if (maxValue <= 25) {
-      axisMax = 25.0;
-    } else if (maxValue <= 50) {
-      axisMax = 50.0;
-    } else if (maxValue <= 100) {
-      axisMax = 100.0;
-    } else {
-      axisMax = (maxValue / 10).ceil() * 10.0;
-    }
-    
-    // Generate labels based on the interval from config
-    final labels = <String>[];
-    
-    // Calculate number of labels based on y-axis interval
-    int labelCount;
-    switch (selectedPeriod) {
-      case '1 hour':
-        labelCount = (axisMax / config.yAxisInterval).ceil().clamp(3, 6);
-        break;
-      case '12 hours':
-        labelCount = (axisMax / config.yAxisInterval).ceil().clamp(3, 6);
-        break;
-      case '24 hours':
-      case '1 day':
-        labelCount = (axisMax / config.yAxisInterval).ceil().clamp(3, 6);
-        break;
-      case '1 week':
-        labelCount = (axisMax / config.yAxisInterval).ceil().clamp(3, 5);
-        break;
-      case '30 days':
-      case '1 month':
-        labelCount = (axisMax / config.yAxisInterval).ceil().clamp(3, 6);
-        break;
-      default:
-        labelCount = 5;
-    }
-    
-    final step = axisMax / labelCount;
-    
-    for (int i = 0; i <= labelCount; i++) {
-      final value = minValue + (step * i);
-      if (value == value.toInt()) {
-        labels.add('${value.toInt()}$unit');
-      } else {
-        labels.add('${value.toStringAsFixed(1)}$unit');
-      }
-    }
-    
-    return labels;
+    return List.generate(
+      data.length,
+      (index) => FlSpot(index.toDouble(), data[index]),
+    );
   }
 
-  /// Generate time labels based on period and timestamps
+  /// Format Y-axis label value
+  String _formatYAxisLabel(double value) {
+    if (value == 0) return '0$unit';
+    
+    if (metricType == MetricType.dockerCpu && value < 1) {
+      return '${value.toStringAsFixed(2)}$unit';
+    }
+    
+    if (value == value.roundToDouble() && value == value.toInt()) {
+      return '${value.toInt()}$unit';
+    }
+    
+    if (value < 1) {
+      return '${value.toStringAsFixed(2)}$unit';
+    }
+    
+    return '${value.toStringAsFixed(1)}$unit';
+  }
+
+  /// Generate X-axis time labels based on selected period
+  /// Labels are aligned to clean interval boundaries (e.g., 22:45, 22:50, 22:55 for 5-min intervals)
   List<String> _generateTimeLabels(ChartAxisConfig config) {
+    const labelCount = 5;
     final now = DateTime.now();
-    final labels = <String>[];
     
-    // If we have actual timestamps, use them
-    if (timestamps != null && timestamps!.isNotEmpty) {
-      final startTime = timestamps!.first;
-      final endTime = timestamps!.last;
-      final totalDuration = endTime.difference(startTime);
-      final labelCount = config.xAxisLabelCount;
-      
-      for (int i = 0; i < labelCount; i++) {
-        final progress = i / (labelCount - 1);
-        final labelTime = startTime.add(
-          Duration(milliseconds: (totalDuration.inMilliseconds * progress).round()),
-        );
-        labels.add(config.xAxisFormatter(labelTime));
-      }
-      return labels;
-    }
+    // Get the interval in minutes for rounding
+    final intervalMinutes = _getIntervalMinutesForPeriod();
     
-    // Otherwise, generate based on period
-    Duration totalDuration;
+    // Round current time DOWN to the nearest interval boundary
+    // e.g., if intervalMinutes=5 and current time is 22:48, round to 22:45
+    final roundedNow = DateTime(
+      now.year,
+      now.month,
+      now.day,
+      now.hour,
+      (now.minute ~/ intervalMinutes) * intervalMinutes,
+    );
+    
+    // Calculate the total span we need to cover (labelCount - 1) intervals
+    final totalIntervals = labelCount - 1;
+    final spanDuration = Duration(minutes: intervalMinutes * totalIntervals);
+    final startTime = roundedNow.subtract(spanDuration);
+    
+    // Generate labels at exact interval boundaries
+    return List.generate(labelCount, (i) {
+      final labelTime = startTime.add(Duration(minutes: intervalMinutes * i));
+      return config.xAxisFormatter(labelTime);
+    });
+  }
+
+  /// Get interval in minutes for the selected period
+  int _getIntervalMinutesForPeriod() {
     switch (selectedPeriod) {
       case '1 hour':
-        totalDuration = const Duration(hours: 1);
-        break;
-      case '3 hours':
-        totalDuration = const Duration(hours: 3);
-        break;
-      case '6 hours':
-        totalDuration = const Duration(hours: 6);
-        break;
+        return 5; // 5-minute intervals for 1 hour (e.g., 22:45, 22:50, 22:55, 23:00, 23:05)
       case '12 hours':
-        totalDuration = const Duration(hours: 12);
-        break;
+        return 60; // 1-hour intervals for 12 hours
       case '24 hours':
       case '1 day':
-        totalDuration = const Duration(days: 1);
-        break;
+        return 180; // 3-hour intervals for 24 hours
       case '1 week':
-        totalDuration = const Duration(days: 7);
-        break;
+        return 60 * 24; // 1-day intervals for 1 week (in minutes)
       case '30 days':
       case '1 month':
-        totalDuration = const Duration(days: 30);
-        break;
+        return 60 * 24 * 2; // 2-day intervals for 30 days
       default:
-        totalDuration = const Duration(hours: 1);
-    }
-    
-    final startTime = now.subtract(totalDuration);
-    final labelCount = config.xAxisLabelCount;
-    
-    for (int i = 0; i < labelCount; i++) {
-      final progress = i / (labelCount - 1);
-      final labelTime = startTime.add(
-        Duration(milliseconds: (totalDuration.inMilliseconds * progress).round()),
-      );
-      labels.add(config.xAxisFormatter(labelTime));
-    }
-    
-    return labels;
-  }
-}
-
-class LineChartPainter extends CustomPainter {
-  final List<double> data;
-  final Color color;
-  final List<String>? yAxisLabels;
-
-  LineChartPainter({
-    required this.data,
-    required this.color,
-    this.yAxisLabels,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    if (data.isEmpty) return;
-
-    final paint = Paint()
-      ..color = color
-      ..strokeWidth = 2.0
-      ..style = PaintingStyle.stroke;
-
-    // Draw grid lines
-    _drawGridLines(canvas, size);
-
-    final path = Path();
-    
-    // Calculate the max value from Y-axis labels or data
-    double maxValue;
-    if (yAxisLabels != null && yAxisLabels!.isNotEmpty) {
-      // Parse the max value from the last label
-      final lastLabel = yAxisLabels!.last;
-      final numericPart = lastLabel.replaceAll(RegExp(r'[^0-9.]'), '');
-      maxValue = double.tryParse(numericPart) ?? data.reduce((a, b) => a > b ? a : b);
-    } else {
-      maxValue = data.reduce((a, b) => a > b ? a : b);
-    }
-    
-    final minValue = 0.0; // Always start from 0
-    final valueRange = maxValue - minValue;
-    
-    if (valueRange == 0) {
-      // Draw a straight line if all values are the same
-      path.moveTo(0, size.height / 2);
-      path.lineTo(size.width, size.height / 2);
-    } else {
-      for (int i = 0; i < data.length; i++) {
-        final x = (i / (data.length - 1)) * size.width;
-        final normalizedValue = (data[i] - minValue) / valueRange;
-        final y = size.height - (normalizedValue * size.height);
-        
-        if (i == 0) {
-          path.moveTo(x, y);
-        } else {
-          path.lineTo(x, y);
-        }
-      }
-    }
-
-    canvas.drawPath(path, paint);
-  }
-
-  void _drawGridLines(Canvas canvas, Size size) {
-    final gridPaint = Paint()
-      ..color = color.withOpacity(0.1)
-      ..strokeWidth = 0.5
-      ..style = PaintingStyle.stroke;
-
-    // Draw horizontal grid lines based on Y-axis labels count
-    final horizontalLines = (yAxisLabels?.length ?? 6) - 1;
-    for (int i = 0; i <= horizontalLines; i++) {
-      final y = (i / horizontalLines) * size.height;
-      canvas.drawLine(
-        Offset(0, y),
-        Offset(size.width, y),
-        gridPaint,
-      );
+        return 5;
     }
   }
 
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
-}
-
-class AreaChartPainter extends CustomPainter {
-  final List<double> data;
-  final Color color;
-  final List<String>? yAxisLabels;
-
-  AreaChartPainter({
-    required this.data,
-    required this.color,
-    this.yAxisLabels,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    if (data.isEmpty) return;
-
-    // Draw grid lines first
-    _drawGridLines(canvas, size);
-
-    final paint = Paint()
-      ..color = color.withOpacity(0.3)
-      ..style = PaintingStyle.fill;
-
-    final strokePaint = Paint()
-      ..color = color
-      ..strokeWidth = 2.0
-      ..style = PaintingStyle.stroke;
-
-    final path = Path();
-    final strokePath = Path();
-    
-    // Calculate the max value from Y-axis labels or data
-    double maxValue;
-    if (yAxisLabels != null && yAxisLabels!.isNotEmpty) {
-      final lastLabel = yAxisLabels!.last;
-      final numericPart = lastLabel.replaceAll(RegExp(r'[^0-9.]'), '');
-      maxValue = double.tryParse(numericPart) ?? data.reduce((a, b) => a > b ? a : b);
-    } else {
-      maxValue = data.reduce((a, b) => a > b ? a : b);
-    }
-    
-    final minValue = 0.0;
-    final valueRange = maxValue - minValue;
-    
-    if (valueRange == 0) {
-      // Draw a filled rectangle if all values are the same
-      path.addRect(Rect.fromLTWH(0, size.height / 2, size.width, size.height / 2));
-      strokePath.moveTo(0, size.height / 2);
-      strokePath.lineTo(size.width, size.height / 2);
-    } else {
-      // Start from bottom left
-      path.moveTo(0, size.height);
-      
-      final firstNormalized = (data[0] - minValue) / valueRange;
-      final firstY = size.height - (firstNormalized * size.height);
-      strokePath.moveTo(0, firstY);
-      
-      for (int i = 0; i < data.length; i++) {
-        final x = (i / (data.length - 1)) * size.width;
-        final normalizedValue = (data[i] - minValue) / valueRange;
-        final y = size.height - (normalizedValue * size.height);
-        
-        if (i == 0) {
-          path.lineTo(x, y);
-        } else {
-          path.lineTo(x, y);
-          strokePath.lineTo(x, y);
-        }
-      }
-      
-      // Close the path at bottom right
-      path.lineTo(size.width, size.height);
-      path.close();
-    }
-
-    canvas.drawPath(path, paint);
-    canvas.drawPath(strokePath, strokePaint);
-  }
-
-  void _drawGridLines(Canvas canvas, Size size) {
-    final gridPaint = Paint()
-      ..color = color.withOpacity(0.1)
-      ..strokeWidth = 0.5
-      ..style = PaintingStyle.stroke;
-
-    // Draw horizontal grid lines based on Y-axis labels count
-    final horizontalLines = (yAxisLabels?.length ?? 6) - 1;
-    for (int i = 0; i <= horizontalLines; i++) {
-      final y = (i / horizontalLines) * size.height;
-      canvas.drawLine(
-        Offset(0, y),
-        Offset(size.width, y),
-        gridPaint,
-      );
+  /// Get duration for the selected period
+  Duration _getDurationForPeriod() {
+    switch (selectedPeriod) {
+      case '1 hour':
+        return const Duration(hours: 1);
+      case '12 hours':
+        return const Duration(hours: 12);
+      case '24 hours':
+      case '1 day':
+        return const Duration(days: 1);
+      case '1 week':
+        return const Duration(days: 7);
+      case '30 days':
+      case '1 month':
+        return const Duration(days: 30);
+      default:
+        return const Duration(hours: 1);
     }
   }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }

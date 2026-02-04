@@ -1,16 +1,31 @@
 import 'package:beszel_fpg/core/theme/theme_manager.dart';
 import 'package:beszel_fpg/core/utils/extensions.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/storage/storage_service.dart';
 import '../../../../core/theme/theme_extensions.dart';
 import '../../../../core/network/pocketbase_provider.dart';
 
 class ProfilePopup extends ConsumerWidget {
   const ProfilePopup({super.key});
+
+  /// Check if the current user is an admin
+  static bool _isAdmin() {
+    final role = StorageService.getString('user_role');
+    return role == 'admin';
+  }
+
+  /// Opens PocketBase admin login page in external browser
+  static Future<void> _openPocketBaseAdmin() async {
+    const pocketBaseAdminUrl = 'https://beszel.flexipgroup.com/_/#/login';
+    final uri = Uri.parse(pocketBaseAdminUrl);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -94,54 +109,57 @@ class ProfilePopup extends ConsumerWidget {
                     color: context.borderColor,
                   ),
                   const SizedBox(height: 6),
-                  // Menu items
-                  _PopupItem(
-                    icon: CupertinoIcons.person_2,
-                    label: 'Users'.tr(),
-                    onTap: () {
-                      Navigator.of(context).pop();
-                      // TODO: navigate to users page if available
-                    },
-                    textColor: context.textColor,
-                    hoverColor: context.backgroundColor,
-                  ),
-                  _PopupItem(
-                    icon: CupertinoIcons.squares_below_rectangle,
-                    label: 'Systems'.tr(),
-                    onTap: () {
-                      Navigator.of(context).pop();
-                      // TODO: navigate to systems page if available
-                    },
-                    textColor: context.textColor,
-                    hoverColor: context.backgroundColor,
-                  ),
-                  _PopupItem(
-                    icon: CupertinoIcons.list_bullet,
-                    label: 'Logs'.tr(),
-                    onTap: () {
-                      Navigator.of(context).pop();
-                      // TODO: navigate to logs page if available
-                    },
-                    textColor: context.textColor,
-                    hoverColor: context.backgroundColor,
-                  ),
-                  _PopupItem(
-                    icon: CupertinoIcons.archivebox,
-                    label: 'Backups'.tr(),
-                    onTap: () {
-                      Navigator.of(context).pop();
-                      // TODO: navigate to backups page if available
-                    },
-                    textColor: context.textColor,
-                    hoverColor: context.backgroundColor,
-                  ),
-                  const SizedBox(height: 6),
+                  // Menu items - Admin only items
+                  if (_isAdmin()) ...[
+                    _PopupItem(
+                      icon: CupertinoIcons.person_2,
+                      label: 'Users'.tr(),
+                      onTap: () {
+                        Navigator.of(context).pop();
+                        _openPocketBaseAdmin();
+                      },
+                      textColor: context.textColor,
+                      hoverColor: context.backgroundColor,
+                    ),
+                    _PopupItem(
+                      icon: CupertinoIcons.squares_below_rectangle,
+                      label: 'Systems'.tr(),
+                      onTap: () {
+                        Navigator.of(context).pop();
+                        _openPocketBaseAdmin();
+                      },
+                      textColor: context.textColor,
+                      hoverColor: context.backgroundColor,
+                    ),
+                    _PopupItem(
+                      icon: CupertinoIcons.list_bullet,
+                      label: 'Logs'.tr(),
+                      onTap: () {
+                        Navigator.of(context).pop();
+                        _openPocketBaseAdmin();
+                      },
+                      textColor: context.textColor,
+                      hoverColor: context.backgroundColor,
+                    ),
+                    _PopupItem(
+                      icon: CupertinoIcons.archivebox,
+                      label: 'Backups'.tr(),
+                      onTap: () {
+                        Navigator.of(context).pop();
+                        _openPocketBaseAdmin();
+                      },
+                      textColor: context.textColor,
+                      hoverColor: context.backgroundColor,
+                    ),
+                     const SizedBox(height: 6),
                   // Divider before logout
                   Container(
                     height: 1,
                     width: double.infinity,
                     color: context.borderColor,
                   ),
+                  ],
+                 
                   const SizedBox(height: 6),
                   _PopupItem(
                     icon: CupertinoIcons.square_arrow_left,
@@ -155,6 +173,7 @@ class ProfilePopup extends ConsumerWidget {
                       // Remove only auth-related keys
                       StorageService.remove('access_token');
                       StorageService.remove('user_email');
+                      StorageService.remove('user_role');
                       context.pushNamed('login_page');
                     },
                     textColor: context.textColor,

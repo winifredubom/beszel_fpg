@@ -88,7 +88,7 @@ class SystemCard extends StatelessWidget {
                     width: 10,
                     height: 10,
                     decoration: BoxDecoration(
-                      color: AppColors.success,
+                      color: isOnline ? AppColors.success : AppColors.error,
                       shape: BoxShape.circle,
                     ),
                   ),
@@ -247,7 +247,7 @@ class SystemCard extends StatelessWidget {
           child: Container(
             height: 6,
             decoration: BoxDecoration(
-              color: context.borderColor,
+              color: barColor.withOpacity(0.2),
               borderRadius: BorderRadius.circular(3),
             ),
             child: FractionallySizedBox(

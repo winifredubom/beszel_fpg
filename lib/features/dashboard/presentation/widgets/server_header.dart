@@ -1,4 +1,5 @@
 import 'package:beszel_fpg/core/theme/theme_extensions.dart';
+import 'package:beszel_fpg/features/dashboard/presentation/widgets/time_period_selector.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import '../../../../core/theme/app_theme.dart';
@@ -12,6 +13,8 @@ class ServerHeader extends StatelessWidget {
   final String uptime;
   final String version;
   final String serverType;
+  final String selectedPeriod;
+  final ValueChanged<String> onPeriodChanged;
 
   const ServerHeader({
     super.key,
@@ -22,6 +25,8 @@ class ServerHeader extends StatelessWidget {
     required this.uptime,
     required this.version,
     required this.serverType,
+    required this.selectedPeriod,
+    required this.onPeriodChanged,
   });
 
   @override
@@ -63,7 +68,10 @@ class ServerHeader extends StatelessWidget {
                     ),
                   ),
                 ),
-                Container(
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                       Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 12,
                     vertical: 6,
@@ -71,10 +79,7 @@ class ServerHeader extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: AppColors.success,
                     borderRadius: BorderRadius.circular(AppDimensions.radiusM),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
+                  ),),
                       Container(
                         width: 8,
                         height: 8,
@@ -94,7 +99,7 @@ class ServerHeader extends StatelessWidget {
                       ),
                     ],
                   ),
-                ),
+                
               ],
             ),
             
@@ -110,6 +115,13 @@ class ServerHeader extends StatelessWidget {
                 _buildInfoItem(CupertinoIcons.clock, uptime, context),
                 _buildInfoItem(CupertinoIcons.info_circle, version, context),
                 _buildInfoItem(CupertinoIcons.square_stack_3d_up, serverType, context),
+                 const SizedBox(height: AppDimensions.paddingM),
+            
+            // Time Period Selector
+            TimePeriodSelector(
+              selectedPeriod: selectedPeriod,
+              onPeriodChanged: onPeriodChanged,
+            ),
               ],
             ),
           ],

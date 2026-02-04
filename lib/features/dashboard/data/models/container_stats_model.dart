@@ -129,12 +129,14 @@ class AggregatedContainerData {
   final String containerName;
   final List<double> cpuData;
   final List<double> memoryData;
+  final List<double> networkData; // Combined network (received + sent)
   final List<DateTime> timestamps;
 
   const AggregatedContainerData({
     required this.containerName,
     required this.cpuData,
     required this.memoryData,
+    required this.networkData,
     required this.timestamps,
   });
 
@@ -142,11 +144,13 @@ class AggregatedContainerData {
   double get maxCpu => cpuData.isNotEmpty ? cpuData.reduce((a, b) => a > b ? a : b) : 0.0;
   double get currentMemory => memoryData.isNotEmpty ? memoryData.last : 0.0;
   double get maxMemory => memoryData.isNotEmpty ? memoryData.reduce((a, b) => a > b ? a : b) : 0.0;
+  double get currentNetwork => networkData.isNotEmpty ? networkData.last : 0.0;
+  double get maxNetwork => networkData.isNotEmpty ? networkData.reduce((a, b) => a > b ? a : b) : 0.0;
 }
 
 /// Helper to aggregate container stats from response
 List<AggregatedContainerData> aggregateContainerStats(ContainerStatsResponse response) {
-  final Map<String, List<({DateTime time, double cpu, double mem})>> dataByContainer = {};
+  final Map<String, List<({DateTime time, double cpu, double mem, double net})>> dataByContainer = {};
 
   for (final record in response.items) {
     for (final stat in record.stats) {
@@ -155,6 +159,7 @@ List<AggregatedContainerData> aggregateContainerStats(ContainerStatsResponse res
         time: record.created,
         cpu: stat.c,
         mem: stat.m,
+        net: stat.nr + stat.ns, // Combined network I/O
       ));
     }
   }
@@ -165,6 +170,7 @@ List<AggregatedContainerData> aggregateContainerStats(ContainerStatsResponse res
       containerName: entry.key,
       cpuData: sortedData.map((e) => e.cpu).toList(),
       memoryData: sortedData.map((e) => e.mem).toList(),
+      networkData: sortedData.map((e) => e.net).toList(),
       timestamps: sortedData.map((e) => e.time).toList(),
     );
   }).toList();

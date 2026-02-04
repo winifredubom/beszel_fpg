@@ -21,21 +21,29 @@ final loginProvider = FutureProvider.family<void, Map<String, String>>((
       .collection('users')
       .authWithPassword(credentials['identity']!, credentials['password']!);
 
-  // Persist the user email (prefer auth model value; fallback to entered identity).
+  // Persist the user email and role (prefer auth model value; fallback to entered identity).
   try {
     final model = pb.authStore.model;
     String? email;
+    String? role;
     if (model != null) {
       // RecordModel exposes data map; use common field names.
       final data = model.data;
+      debugPrint('🔍 Model data: $data');
       email = (data['email'] as String?) ?? (data['username'] as String?);
+      role = data['role'] as String?;
+      debugPrint('🔍 Extracted role: $role');
     }
     await StorageService.setString(
       'user_email',
       email ?? credentials['identity']!,
     );
-  } catch (_) {
+    // Store user role for role-based UI
+    await StorageService.setString('user_role', role ?? 'user');
+  } catch (e) {
+    debugPrint('❌ Error extracting user data: $e');
     await StorageService.setString('user_email', credentials['identity']!);
+    await StorageService.setString('user_role', 'user');
   }
 
   // Persist PocketBase token for HTTP client (used by dio interceptor).
@@ -48,7 +56,9 @@ final loginProvider = FutureProvider.family<void, Map<String, String>>((
   debugPrint(
     '🔗 Login URL: ${pb.baseUrl}/api/collections/users/auth-with-password',
   );
+  debugPrint('Role: ${StorageService.getString('user_role')}');
   debugPrint('🔑 Identity: ${credentials['identity']}');
   debugPrint('🔑 Token: ${pb.authStore.token}');
   debugPrint('📧 Email: ${StorageService.getString('user_email')}');
+  debugPrint('👤 Role: ${StorageService.getString('user_role')}');
 });

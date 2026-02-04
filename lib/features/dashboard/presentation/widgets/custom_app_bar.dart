@@ -6,6 +6,7 @@ import '../../../../core/theme/theme_manager.dart';
 import 'language_selector.dart';
 import 'theme_toggle_button.dart';
 import 'profile_popup.dart';
+import 'settings_bottom_sheet.dart';
 
 class CustomAppBar extends StatelessWidget {
   final bool canGoBack;
@@ -24,6 +25,15 @@ class CustomAppBar extends StatelessWidget {
     this.isFloating = true,
     this.titleFontSize = 24,
   });
+
+  void _showSettingsSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => const SettingsBottomSheet(),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -49,13 +59,13 @@ class CustomAppBar extends StatelessWidget {
         const Spacer(),
         const ThemeToggleButton(),
         const SizedBox(width: 5),
-          const LanguageSelector(),
+          //const LanguageSelector(),
           const SizedBox(width: 5),
         
         CupertinoButton(
           padding: EdgeInsets.zero,
           onPressed: () {
-            // Navigate to settings
+            _showSettingsSheet(context);
           },
           child: Icon(
             CupertinoIcons.gear,

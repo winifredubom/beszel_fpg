@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:beszel_fpg/core/network/pocketbase_provider.dart';
 import 'package:beszel_fpg/core/network/realtime_service.dart';
 import 'package:beszel_fpg/features/dashboard/data/models/system_records_model.dart';
@@ -8,6 +9,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 
 final selectedPeriodProvider = StateProvider<String>((ref) => '1 hour');
+
+final _autoRefreshProvider = StreamProvider<int>((ref) {
+  return Stream.periodic(const Duration(seconds: 60), (count) => count);
+});
 
 /// Original FutureProvider for initial fetch (kept for compatibility)
 final systemRecordsProvider =
@@ -99,6 +104,9 @@ final liveSystemRecordsProvider = StreamProvider<List<SystemRecordItem>>((ref) a
 final systemStatsProvider = FutureProvider.family<SystemStatsResponse, String>((ref, systemId) async {
   final pb = ref.read(pocketBaseProvider);
   final selectedPeriod = ref.watch(selectedPeriodProvider);
+  
+  // Watch the auto-refresh ticker to trigger periodic updates
+  ref.watch(_autoRefreshProvider);
 
   // Calculate the start time based on selected period
   final now = DateTime.now().toUtc();
@@ -165,6 +173,9 @@ final systemStatsProvider = FutureProvider.family<SystemStatsResponse, String>((
 final containerStatsProvider = FutureProvider.family<ContainerStatsResponse, String>((ref, systemId) async {
   final pb = ref.read(pocketBaseProvider);
   final selectedPeriod = ref.watch(selectedPeriodProvider);
+  
+  // Watch the auto-refresh ticker to trigger periodic updates
+  ref.watch(_autoRefreshProvider);
 
   // Calculate the start time based on selected period
   final now = DateTime.now().toUtc();

@@ -1,6 +1,5 @@
 // ignore_for_file: deprecated_member_use
 
-import 'package:beszel_fpg/features/dashboard/data/models/system_records_model.dart';
 import 'package:beszel_fpg/features/dashboard/data/service/system_records.dart';
 import 'package:beszel_fpg/features/dashboard/presentation/widgets/add_system_dialog.dart';
 import 'package:flutter/cupertino.dart';
@@ -12,7 +11,7 @@ import '../../../../core/theme/theme_manager.dart';
 import '../../../../core/theme/theme_extensions.dart';
 import '../widgets/server_header.dart';
 import '../widgets/metric_chart_card.dart';
-import '../widgets/time_period_selector.dart';
+import '../widgets/docker_chart_card.dart';
 import '../widgets/custom_app_bar.dart';
 import '../widgets/swipe_navigation.dart';
 
@@ -32,8 +31,9 @@ class SystemsBoard extends ConsumerWidget {
     }
 
     final statsAsync = ref.watch(systemStatsProvider(systemId!));
+    final containerStatsAsync = ref.watch(aggregatedContainerStatsProvider(systemId!));
     final selectedPeriod = ref.watch(selectedPeriodProvider);
-    final systemRecordsAsync = ref.watch(systemRecordsProvider);
+    final liveSystemsAsync = ref.watch(liveSystemRecordsProvider);
     return ListenableBuilder(
       listenable: ThemeManager.instance,
       builder: (context, child) {
@@ -55,14 +55,14 @@ class SystemsBoard extends ConsumerWidget {
                             ),
                             sliver: SliverList(
                               delegate: SliverChildListDelegate([
-                                systemRecordsAsync.when(
+                                liveSystemsAsync.when(
                                   loading: () => const Center(
                                     child: CupertinoActivityIndicator(),
                                   ),
                                   error: (e, _) =>
                                       Center(child: Text('Error: $e')),
-                                  data: (systemRecords) {
-                                    final systemList = systemRecords.items
+                                  data: (systemsList) {
+                                    final systemList = systemsList
                                         .where((item) => item.id == systemId);
                                     final system = systemList.isNotEmpty
                                         ? systemList.first
@@ -88,6 +88,14 @@ class SystemsBoard extends ConsumerWidget {
                                         final diskData = stats.items
                                             .map((e) => e.stats.dp)
                                             .toList();
+                                        // Disk I/O data (dr + dw = total disk I/O in MB/s)
+                                        final diskIOData = stats.items
+                                            .map((e) => e.stats.dr + e.stats.dw)
+                                            .toList();
+                                        // Bandwidth data (nr + ns = total bandwidth in MB/s)
+                                        final bandwidthData = stats.items
+                                            .map((e) => e.stats.nr + e.stats.ns)
+                                            .toList();
                                         // Get timestamps for X-axis
                                         final timestamps = stats.items
                                             .map((e) => e.created)
@@ -108,6 +116,7 @@ class SystemsBoard extends ConsumerWidget {
                                               CrossAxisAlignment.start,
                                           children: [
                                             ServerHeader(
+                                             // isOnline: system.status == 'up',
                                               title: system.name,
                                               status: system.status,
                                               ipAddress: system.host,
@@ -115,19 +124,12 @@ class SystemsBoard extends ConsumerWidget {
                                               uptime: '',
                                               version: system.info.k,
                                               serverType: system.info.m,
-                                            ),
-                                            const SizedBox(
-                                              height: AppDimensions.paddingL,
-                                            ),
-                                            TimePeriodSelector(
                                               selectedPeriod: selectedPeriod,
                                               onPeriodChanged: (period) {
-                                                ref.read(selectedPeriodProvider.notifier,
-                                                    )
-                                                        .state =
-                                                    period;
+                                                ref.read(selectedPeriodProvider.notifier).state = period;
                                               },
                                             ),
+                                            
                                             const SizedBox(
                                               height: AppDimensions.paddingL,
                                             ),
@@ -147,89 +149,197 @@ class SystemsBoard extends ConsumerWidget {
                                                   timestamps: timestamps,
                                                   selectedPeriod: selectedPeriod,
                                                   unit: '%',
+                                                  metricType: MetricType.cpu,
+                                                  showAreaChart: true,
                                                 ),
                                                 const SizedBox(
                                                   height:
                                                       AppDimensions.paddingM,
                                                 ),
+                                                // Docker CPU Usage - Multi-container stacked area chart
+                                                containerStatsAsync.when(
+                                                  data: (containerList) => DockerChartCard(
+                                                    title: 'Docker CPU Usage',
+                                                    subtitle: 'Average CPU utilization of containers',
+                                                    containerData: containerList,
+                                                    selectedPeriod: selectedPeriod,
+                                                    hasFilter: true,
+                                                    unit: '%',
+                                                  ),
+                                                  loading: () => Container(
+                                                    height: AppDimensions.chartHeight + 100,
+                                                    decoration: BoxDecoration(
+                                                      color: context.surfaceColor,
+                                                      borderRadius: BorderRadius.circular(AppDimensions.radiusL),
+                                                    ),
+                                                    child: const Center(
+                                                      child: CupertinoActivityIndicator(),
+                                                    ),
+                                                  ),
+                                                  error: (error, stack) => Container(
+                                                    height: AppDimensions.chartHeight + 100,
+                                                    decoration: BoxDecoration(
+                                                      color: context.surfaceColor,
+                                                      borderRadius: BorderRadius.circular(AppDimensions.radiusL),
+                                                    ),
+                                                    child: Center(
+                                                      child: Text(
+                                                        'Failed to load container data',
+                                                        style: TextStyle(color: context.secondaryTextColor),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ),
+                                                const SizedBox(
+                                                  height:
+                                                      AppDimensions.paddingM,
+                                                ),
+                                                // Memory Usage - single line chart
                                                 MetricChartCard(
-                                                  title: 'Docker CPU Usage',
-                                                  subtitle: 'Average CPU utilization of containers',
-
-                                                  currentValue: '${stats.dockerCpuUsage ?? 0}%',
-                                                  maxValue: '${stats.maxDockerCpuUsage ?? 0}%',
-                                                  chartColor: AppColors.dockerColor,
-                                                  hasFilter: true,
-                                                  data: stats.dockerCpuData ?? [0.0],
+                                                  title: 'Memory Usage',
+                                                  subtitle: 'Precise utilization at the recorded time',
+                                                  currentValue: '${memoryData.isNotEmpty ? memoryData.last.toStringAsFixed(1) : 0} GB',
+                                                  maxValue: '${memoryData.isNotEmpty ? memoryData.reduce((a, b) => a > b ? a : b).toStringAsFixed(1) : 0} GB',
+                                                  chartColor: AppColors.memoryColor,
+                                                  data: memoryData,
+                                                  timestamps: timestamps,
+                                                  selectedPeriod: selectedPeriod,
+                                                  unit: ' GB',
+                                                  metricType: MetricType.memory,
+                                                  showAreaChart: true,
                                                 ),
-                                                // const SizedBox(height: AppDimensions.paddingM),
-                                                // MetricChartCard(
-                                                //   title: 'Memory Usage',
-                                                //   subtitle: 'Precise utilization at the recorded time',
-                                                //   currentValue: '${stats.memoryUsage ?? 0} GB',
-                                                //   maxValue: '${stats.maxMemoryUsage ?? 0} GB',
-                                                //   chartColor: AppColors.memoryColor,
-                                                //   showAreaChart: true,
-                                                //   data: stats.memoryData ?? [0.0],
-                                                // ),
                                                 const SizedBox(
                                                   height:
                                                       AppDimensions.paddingM,
                                                 ),
-                                                // MetricChartCard(
-                                                //   title: 'Docker Memory Usage',
-                                                //   subtitle: 'Memory usage of docker containers',
-                                                //   currentValue: '${stats.dockerMemoryUsage ?? 0} GB',
-                                                //   maxValue: '${stats.maxDockerMemoryUsage ?? 0} GB',
-                                                //   chartColor: AppColors.networkColor,
-                                                //   hasFilter: true,
-                                                //   showAreaChart: true,
-                                                //   data: stats.dockerMemoryData ?? [0.0],
-                                                // ),
-                                                // const SizedBox(height: AppDimensions.paddingM),
-                                                // MetricChartCard(
-                                                //   title: 'Disk Usage',
-                                                //   subtitle: 'Usage of root partition',
-                                                //   currentValue: '${stats.diskUsage ?? 0} GB',
-                                                //   maxValue: '${stats.maxDiskUsage ?? 0} GB',
-                                                //   chartColor: AppColors.diskColor,
-                                                //   showAreaChart: true,
-                                                //   data: stats.diskData ?? [0.0],
-                                                // ),
+                                                // Docker Memory Usage - Multi-container stacked area chart
+                                                containerStatsAsync.when(
+                                                  data: (containerList) => DockerChartCard(
+                                                    title: 'Docker Memory Usage',
+                                                    subtitle: 'Memory usage of docker containers',
+                                                    containerData: containerList,
+                                                    selectedPeriod: selectedPeriod,
+                                                    hasFilter: true,
+                                                    unit: 'MB',
+                                                    metricType: DockerMetricType.memory,
+                                                  ),
+                                                  loading: () => Container(
+                                                    height: AppDimensions.chartHeight + 100,
+                                                    decoration: BoxDecoration(
+                                                      color: context.surfaceColor,
+                                                      borderRadius: BorderRadius.circular(AppDimensions.radiusL),
+                                                    ),
+                                                    child: const Center(
+                                                      child: CupertinoActivityIndicator(),
+                                                    ),
+                                                  ),
+                                                  error: (error, stack) => Container(
+                                                    height: AppDimensions.chartHeight + 100,
+                                                    decoration: BoxDecoration(
+                                                      color: context.surfaceColor,
+                                                      borderRadius: BorderRadius.circular(AppDimensions.radiusL),
+                                                    ),
+                                                    child: Center(
+                                                      child: Text(
+                                                        'Failed to load container data',
+                                                        style: TextStyle(color: context.secondaryTextColor),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ),
                                                 const SizedBox(
                                                   height:
                                                       AppDimensions.paddingM,
                                                 ),
-                                                // MetricChartCard(
-                                                //   title: 'Disk I/O',
-                                                //   subtitle: 'Throughput of root filesystem',
-                                                //   currentValue: '${stats.diskIO ?? 0} MB/s',
-                                                //   maxValue: '${stats.maxDiskIO ?? 0} MB/s',
-                                                //   chartColor: AppColors.networkColor,
-                                                //   data: stats.diskIOData ?? [0.0],
-                                                // ),
-                                                // const SizedBox(height: AppDimensions.paddingM),
-                                                // MetricChartCard(
-                                                //   title: 'Bandwidth',
-                                                //   subtitle: 'Network traffic of public interfaces',
-                                                //   currentValue: '${stats.bandwidth ?? 0} MB/s',
-                                                //   maxValue: '${stats.maxBandwidth ?? 0} MB/s',
-                                                //   chartColor: AppColors.success,
-                                                //   data: stats.bandwidthData ?? [0.0],
-                                                // ),
+                                                // Disk Usage - single line chart
+                                                MetricChartCard(
+                                                  title: 'Disk Usage',
+                                                  subtitle: 'Usage of root partition',
+                                                  currentValue: '${diskData.isNotEmpty ? diskData.last.toStringAsFixed(1) : 0} GB',
+                                                  maxValue: '${diskData.isNotEmpty ? diskData.reduce((a, b) => a > b ? a : b).toStringAsFixed(1) : 0} GB',
+                                                  chartColor: AppColors.diskColor,
+                                                  data: diskData,
+                                                  timestamps: timestamps,
+                                                  selectedPeriod: selectedPeriod,
+                                                  unit: ' GB',
+                                                  metricType: MetricType.disk,
+                                                  showAreaChart: true,
+                                                ),
                                                 const SizedBox(
                                                   height:
                                                       AppDimensions.paddingM,
                                                 ),
-                                                // MetricChartCard(
-                                                //   title: 'Docker Network I/O',
-                                                //   subtitle: 'Network traffic of docker containers',
-                                                //   currentValue: '${stats.dockerNetworkIO ?? 0} MB/s',
-                                                //   maxValue: '${stats.maxDockerNetworkIO ?? 0} MB/s',
-                                                //   chartColor: AppColors.dockerColor,
-                                                //   hasFilter: true,
-                                                //   data: stats.dockerNetworkIOData ?? [0.0],
-                                                // ),
+                                                // Disk I/O - single line chart
+                                                MetricChartCard(
+                                                  title: 'Disk I/O',
+                                                  subtitle: 'Throughput of root filesystem',
+                                                  currentValue: '${diskIOData.isNotEmpty ? diskIOData.last.toStringAsFixed(3) : 0} MB/s',
+                                                  maxValue: '${diskIOData.isNotEmpty ? diskIOData.reduce((a, b) => a > b ? a : b).toStringAsFixed(3) : 0} MB/s',
+                                                  chartColor: AppColors.networkColor,
+                                                  data: diskIOData,
+                                                  timestamps: timestamps,
+                                                  selectedPeriod: selectedPeriod,
+                                                  unit: ' MB/s',
+                                                  metricType: MetricType.diskIO,
+                                                  showAreaChart: true,
+                                                ),
+                                                const SizedBox(
+                                                  height:
+                                                      AppDimensions.paddingM,
+                                                ),
+                                                // Bandwidth - single line chart
+                                                MetricChartCard(
+                                                  title: 'Bandwidth',
+                                                  subtitle: 'Network traffic of public interfaces',
+                                                  currentValue: '${bandwidthData.isNotEmpty ? bandwidthData.last.toStringAsFixed(3) : 0} MB/s',
+                                                  maxValue: '${bandwidthData.isNotEmpty ? bandwidthData.reduce((a, b) => a > b ? a : b).toStringAsFixed(3) : 0} MB/s',
+                                                  chartColor: AppColors.success,
+                                                  data: bandwidthData,
+                                                  timestamps: timestamps,
+                                                  selectedPeriod: selectedPeriod,
+                                                  unit: ' MB/s',
+                                                  metricType: MetricType.bandwidth,
+                                                  showAreaChart: true,
+                                                ),
+                                                const SizedBox(
+                                                  height:
+                                                      AppDimensions.paddingM,
+                                                ),
+                                                // Docker Network I/O - Multi-container stacked area chart
+                                                containerStatsAsync.when(
+                                                  data: (containerList) => DockerChartCard(
+                                                    title: 'Docker Network I/O',
+                                                    subtitle: 'Network traffic of docker containers',
+                                                    containerData: containerList,
+                                                    selectedPeriod: selectedPeriod,
+                                                    hasFilter: true,
+                                                    unit: 'MB/s',
+                                                    metricType: DockerMetricType.network,
+                                                  ),
+                                                  loading: () => Container(
+                                                    height: AppDimensions.chartHeight + 100,
+                                                    decoration: BoxDecoration(
+                                                      color: context.surfaceColor,
+                                                      borderRadius: BorderRadius.circular(AppDimensions.radiusL),
+                                                    ),
+                                                    child: const Center(
+                                                      child: CupertinoActivityIndicator(),
+                                                    ),
+                                                  ),
+                                                  error: (error, stack) => Container(
+                                                    height: AppDimensions.chartHeight + 100,
+                                                    decoration: BoxDecoration(
+                                                      color: context.surfaceColor,
+                                                      borderRadius: BorderRadius.circular(AppDimensions.radiusL),
+                                                    ),
+                                                    child: Center(
+                                                      child: Text(
+                                                        'Failed to load container data',
+                                                        style: TextStyle(color: context.secondaryTextColor),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ),
                                               ],
                                             ),
                                           ],

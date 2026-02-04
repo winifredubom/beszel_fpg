@@ -369,41 +369,41 @@ class _DashboardPageState extends ConsumerState<DashboardPage> with WidgetsBindi
                 ),
               ),
               // Floating Add Button
-              Positioned(
-                right: 16,
-                bottom: 16,
-                child: CupertinoButton(
-                  padding: EdgeInsets.zero,
-                  onPressed: () {
-                    showCupertinoDialog(
-                      context: context,
-                      builder: (context) => const AddSystemDialog(),
-                    );
-                  },
-                  child: Container(
-                    width: 56,
-                    height: 56,
-                    decoration: BoxDecoration(
-                      color: context.backgroundColor,
-                      borderRadius: BorderRadius.circular(28),
-                      boxShadow: [
-                        BoxShadow(
-                          color: ThemeManager.instance.isDarkMode
-                              ? Colors.black.withOpacity(0.3)
-                              : Colors.black.withOpacity(0.1),
-                          blurRadius: 8,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Icon(
-                      CupertinoIcons.add,
-                      color: context.textColor,
-                      size: 24,
-                    ),
-                  ),
-                ),
-              ),
+              // Positioned(
+              //   right: 16,
+              //   bottom: 16,
+              //   child: CupertinoButton(
+              //     padding: EdgeInsets.zero,
+              //     onPressed: () {
+              //       showCupertinoDialog(
+              //         context: context,
+              //         builder: (context) => const AddSystemDialog(),
+              //       );
+              //     },
+              //     child: Container(
+              //       width: 56,
+              //       height: 56,
+              //       decoration: BoxDecoration(
+              //         color: context.backgroundColor,
+              //         borderRadius: BorderRadius.circular(28),
+              //         boxShadow: [
+              //           BoxShadow(
+              //             color: ThemeManager.instance.isDarkMode
+              //                 ? Colors.black.withOpacity(0.3)
+              //                 : Colors.black.withOpacity(0.1),
+              //             blurRadius: 8,
+              //             offset: const Offset(0, 4),
+              //           ),
+              //         ],
+              //       ),
+              //       child: Icon(
+              //         CupertinoIcons.add,
+              //         color: context.textColor,
+              //         size: 24,
+              //       ),
+              //     ),
+              //   ),
+              // ),
             ],
           ),
         );
