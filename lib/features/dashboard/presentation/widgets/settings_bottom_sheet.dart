@@ -1,13 +1,19 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/theme_extensions.dart';
 import '../../../../core/theme/theme_manager.dart';
+import '../../../../core/utils/responsive.dart';
+import '../../data/providers/pinned_servers_provider.dart';
 
-class SettingsBottomSheet extends StatelessWidget {
+class SettingsBottomSheet extends ConsumerWidget {
   const SettingsBottomSheet({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final pinnedServers = ref.watch(pinnedServersProvider);
+    final responsive = Responsive(context);
+    
     return ListenableBuilder(
       listenable: ThemeManager.instance,
       builder: (context, _) {
@@ -15,7 +21,8 @@ class SettingsBottomSheet extends StatelessWidget {
         
         return Container(
           constraints: BoxConstraints(
-            maxHeight: MediaQuery.of(context).size.height * 0.85,
+            maxHeight: responsive.screenHeight * responsive.bottomSheetMaxHeightFactor,
+            maxWidth: responsive.isMobile ? double.infinity : 500,
           ),
           decoration: BoxDecoration(
             color: context.backgroundColor,
@@ -101,36 +108,44 @@ class SettingsBottomSheet extends StatelessWidget {
                       
                       const SizedBox(height: 24),
                       
-                      // Instances Section
-                      // _buildSectionHeader(context, 'Instances'),
-                      // const SizedBox(height: 8),
-                      // _buildSettingsCard(
-                      //   context,
-                      //   isDarkMode,
-                      //   children: [
-                      //     _buildInstanceRow(
-                      //       context,
-                      //       name: 'Demo',
-                      //       isSelected: false,
-                      //     ),
-                      //     _buildDivider(context, isDarkMode),
-                      //     _buildInstanceRow(
-                      //       context,
-                      //       name: 'Server',
-                      //       isSelected: true,
-                      //     ),
-                      //     _buildDivider(context, isDarkMode),
-                      //     _buildActionRow(
-                      //       context,
-                      //       label: 'Add an instance',
-                      //       color: CupertinoColors.activeBlue,
-                      //       onTap: () {
-                      //         // Handle add instance
-                      //         Navigator.of(context).pop();
-                      //       },
-                      //     ),
-                      //   ],
-                      // ),
+                      // Pinned Servers Section
+                      _buildSectionHeader(context, 'Pinned Servers'),
+                      const SizedBox(height: 8),
+                      if (pinnedServers.isEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(left: 16),
+                          child: Text(
+                            'No pinned servers',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: context.secondaryTextColor,
+                              fontFamily: '.SF Pro Text',
+                            ),
+                          ),
+                        )
+                      else
+                        _buildSettingsCard(
+                          context,
+                          isDarkMode,
+                          children: [
+                            ...pinnedServers.asMap().entries.map((entry) {
+                              final index = entry.key;
+                              final server = entry.value;
+                              return Column(
+                                children: [
+                                  _buildPinnedServerRow(
+                                    context,
+                                    ref,
+                                    name: server.name,
+                                    serverId: server.id,
+                                  ),
+                                  if (index < pinnedServers.length - 1)
+                                    _buildDivider(context, isDarkMode),
+                                ],
+                              );
+                            }),
+                          ],
+                        ),
                       
                       const SizedBox(height: 24),
                       
@@ -144,11 +159,15 @@ class SettingsBottomSheet extends StatelessWidget {
                           _buildActionRow(
                             context,
                             label: 'Clear all pins',
-                            color: CupertinoColors.destructiveRed,
-                            onTap: () {
-                              // Handle clear pins
-                              Navigator.of(context).pop();
-                            },
+                            color: pinnedServers.isEmpty 
+                                ? context.secondaryTextColor 
+                                : CupertinoColors.destructiveRed,
+                            onTap: pinnedServers.isEmpty 
+                                ? null 
+                                : () {
+                                    ref.read(pinnedServersProvider.notifier).clearAllPins();
+                                    Navigator.of(context).pop();
+                                  },
                           ),
                         ],
                       ),
@@ -249,48 +268,6 @@ class SettingsBottomSheet extends StatelessWidget {
     );
   }
 
-  Widget _buildInstanceRow(
-    BuildContext context, {
-    required String name,
-    required bool isSelected,
-    VoidCallback? onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        child: Row(
-          children: [
-            Icon(
-              CupertinoIcons.doc_text,
-              size: 18,
-              color: context.secondaryTextColor,
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                name,
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w400,
-                  color: context.textColor,
-                  fontFamily: '.SF Pro Text',
-                ),
-              ),
-            ),
-            if (isSelected)
-              Icon(
-                CupertinoIcons.checkmark,
-                size: 18,
-                color: CupertinoColors.activeBlue,
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _buildActionRow(
     BuildContext context, {
     required String label,
@@ -315,6 +292,48 @@ class SettingsBottomSheet extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildPinnedServerRow(
+    BuildContext context,
+    WidgetRef ref, {
+    required String name,
+    required String serverId,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      child: Row(
+        children: [
+          Icon(
+            CupertinoIcons.pin_fill,
+            size: 16,
+            color: CupertinoColors.activeBlue,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              name,
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w400,
+                color: context.textColor,
+                fontFamily: '.SF Pro Text',
+              ),
+            ),
+          ),
+          GestureDetector(
+            onTap: () {
+              ref.read(pinnedServersProvider.notifier).unpinServer(serverId);
+            },
+            child: Icon(
+              CupertinoIcons.xmark_circle_fill,
+              size: 20,
+              color: context.secondaryTextColor,
+            ),
+          ),
+        ],
       ),
     );
   }

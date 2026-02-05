@@ -146,7 +146,22 @@ class AppHelpers {
     }
   }
   
+  static String getStatusDisplayText(String status) {
+    switch (status.toLowerCase()) {
+      case 'online':
+      case 'up':
+        return 'Up';
+      case 'offline':
+      case 'down':
+        return 'Down';
+      case 'warning':
+        return 'Warning';
+      default:
+        return status;
+    }
+  }
+  
   static String getStatusText(bool isOnline) {
-    return isOnline ? 'Online' : 'Offline';
+    return isOnline ? 'Up' : 'Down';
   }
 }

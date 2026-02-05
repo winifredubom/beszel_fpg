@@ -1,4 +1,5 @@
 import 'package:beszel_fpg/core/theme/theme_extensions.dart';
+import 'package:beszel_fpg/core/utils/helpers.dart';
 import 'package:beszel_fpg/features/dashboard/presentation/widgets/time_period_selector.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -68,38 +69,38 @@ class ServerHeader extends StatelessWidget {
                     ),
                   ),
                 ),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                       Container(
+                Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 12,
                     vertical: 6,
                   ),
                   decoration: BoxDecoration(
-                    color: AppColors.success,
+                    color: AppHelpers.getStatusColor(status),
                     borderRadius: BorderRadius.circular(AppDimensions.radiusM),
-                  ),),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
                       Container(
                         width: 8,
                         height: 8,
                         decoration: BoxDecoration(
-                          color: context.surfaceColor,
+                          color: Colors.white,
                           shape: BoxShape.circle,
                         ),
                       ),
                       const SizedBox(width: 8),
                       Text(
-                        status,
-                        style: TextStyle(
-                          color: context.surfaceColor,
+                        AppHelpers.getStatusDisplayText(status),
+                        style: const TextStyle(
+                          color: Colors.white,
                           fontWeight: FontWeight.w600,
                           fontFamily: '.SF Pro Text',
                         ),
                       ),
                     ],
                   ),
-                
+                ),
               ],
             ),
             

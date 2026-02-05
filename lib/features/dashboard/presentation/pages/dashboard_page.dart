@@ -1,7 +1,9 @@
 // ignore_for_file: deprecated_member_use
 
 import 'package:beszel_fpg/features/dashboard/data/service/system_records.dart';
+import 'package:beszel_fpg/features/dashboard/data/providers/pinned_servers_provider.dart';
 import 'package:beszel_fpg/core/network/realtime_service.dart';
+import 'package:beszel_fpg/core/utils/responsive.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -11,7 +13,6 @@ import '../../../../core/constants/app_constants.dart';
 import '../../../../core/theme/theme_manager.dart';
 import '../../../../core/theme/theme_extensions.dart';
 import '../widgets/system_card.dart';
-import '../widgets/add_system_dialog.dart';
 import '../widgets/custom_app_bar.dart';
 import '../widgets/view_options_popup.dart';
 
@@ -76,6 +77,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> with WidgetsBindi
     final filterText = ref.watch(filterTextProvider);
     final sortOption = ref.watch(sortOptionProvider);
     final visibleFields = ref.watch(visibleFieldsProvider);
+    final pinnedServers = ref.watch(pinnedServersProvider);
 
     return ListenableBuilder(
       listenable: ThemeManager.instance,
@@ -100,7 +102,10 @@ class _DashboardPageState extends ConsumerState<DashboardPage> with WidgetsBindi
                         // Add top padding to account for floating app bar
                         const SliverToBoxAdapter(child: SizedBox(height: 80)),
                         SliverPadding(
-                          padding: const EdgeInsets.all(AppDimensions.paddingL),
+                          padding: EdgeInsets.symmetric(
+                            horizontal: context.horizontalPadding,
+                            vertical: AppDimensions.paddingL,
+                          ),
                           sliver: SliverList(
                             delegate: SliverChildListDelegate([
                               // All Systems Header
@@ -262,8 +267,18 @@ class _DashboardPageState extends ConsumerState<DashboardPage> with WidgetsBindi
                                               .contains(filterText.toLowerCase()))
                                           .toList();
                                   
-                                  // Sort systems based on sort option
+                                  // Get pinned server IDs for sorting
+                                  final pinnedIds = pinnedServers.map((s) => s.id).toSet();
+                                  
+                                  // Sort systems: pinned first, then by sort option
                                   filteredItems.sort((a, b) {
+                                    // First, sort by pinned status
+                                    final aIsPinned = pinnedIds.contains(a.id);
+                                    final bIsPinned = pinnedIds.contains(b.id);
+                                    if (aIsPinned && !bIsPinned) return -1;
+                                    if (!aIsPinned && bIsPinned) return 1;
+                                    
+                                    // Then apply the selected sort option
                                     switch (sortOption) {
                                       case SortOption.systemAsc:
                                         return a.name.toLowerCase().compareTo(b.name.toLowerCase());
@@ -317,45 +332,90 @@ class _DashboardPageState extends ConsumerState<DashboardPage> with WidgetsBindi
                                     );
                                   }
                                   
-                                  return Column(
-                                    children: filteredItems
-                                        .map(
-                                          (item) => SystemCard(
-                                            title: item.name,
-                                            isOnline: item.status == 'online' || item.status == 'up',
-                                            cpuUsage: item.info.cpu,
-                                            memoryUsage: item.info.mp,
-                                            diskUsage: item.info.dp,
-                                            gpuUsage: 0, // Map as needed
-                                            networkUsage: '', // Map as needed
-                                            temperature: '', // Map as needed
-                                            agentVersion: item.info.v,
-                                            showCpu: visibleFields.contains(VisibleField.cpu),
-                                            showMemory: visibleFields.contains(VisibleField.memory),
-                                            showDisk: visibleFields.contains(VisibleField.disk),
-                                            showGpu: visibleFields.contains(VisibleField.gpu),
-                                            showNetwork: visibleFields.contains(VisibleField.network),
-                                            showTemperature: visibleFields.contains(VisibleField.temperature),
-                                            showAgentVersion: visibleFields.contains(VisibleField.agentVersion),
-                                            showActions: visibleFields.contains(VisibleField.actions),
-                                            onTap: () {
-                                              debugPrint('🚀 Navigating to system: ${item.id}');
-                                              debugPrint('🚀 Full path: ${AppRoutes.systemsBoard}?systemId=${item.id}');
-                                              context.push(
-                                                '${AppRoutes.systemsBoard}?systemId=${item.id}',
-                                              );
-                                            },
-                                            onNotificationTap: () {
-                                              debugPrint(
-                                                'Notification for ${item.name}',
-                                              );
-                                            },
-                                            onMenuTap: () {
-                                              debugPrint('Menu for ${item.name}');
-                                            },
+                                  // Build system cards
+                                  final systemCards = filteredItems.map(
+                                    (item) => SystemCard(
+                                      title: item.name,
+                                      isOnline: item.status == 'online' || item.status == 'up',
+                                      cpuUsage: item.info.cpu,
+                                      memoryUsage: item.info.mp,
+                                      diskUsage: item.info.dp,
+                                      gpuUsage: 0, // Map as needed
+                                      networkUsage: '', // Map as needed
+                                      temperature: '', // Map as needed
+                                      agentVersion: item.info.v,
+                                      isPinned: pinnedIds.contains(item.id),
+                                      showCpu: visibleFields.contains(VisibleField.cpu),
+                                      showMemory: visibleFields.contains(VisibleField.memory),
+                                      showDisk: visibleFields.contains(VisibleField.disk),
+                                      showGpu: visibleFields.contains(VisibleField.gpu),
+                                      showNetwork: visibleFields.contains(VisibleField.network),
+                                      showTemperature: visibleFields.contains(VisibleField.temperature),
+                                      showAgentVersion: visibleFields.contains(VisibleField.agentVersion),
+                                      showActions: visibleFields.contains(VisibleField.actions),
+                                      onTap: () {
+                                        debugPrint('🚀 Navigating to system: ${item.id}');
+                                        debugPrint('🚀 Full path: ${AppRoutes.systemsBoard}?systemId=${item.id}');
+                                        context.push(
+                                          '${AppRoutes.systemsBoard}?systemId=${item.id}',
+                                        );
+                                      },
+                                      onNotificationTap: () {
+                                        debugPrint(
+                                          'Notification for ${item.name}',
+                                        );
+                                      },
+                                      onMenuTap: () {
+                                        debugPrint('Menu for ${item.name}');
+                                      },
+                                      onPinTap: () {
+                                        ref.read(pinnedServersProvider.notifier)
+                                            .togglePin(item.id, item.name);
+                                      },
+                                    ),
+                                  ).toList();
+                                  
+                                  // Use responsive layout
+                                  return ResponsiveBuilder(
+                                    builder: (context, responsive) {
+                                      // On mobile, use simple column
+                                      if (responsive.isMobile) {
+                                        return Column(children: systemCards);
+                                      }
+                                      
+                                      // On tablet/desktop, use grid layout
+                                      final columns = responsive.dashboardColumns;
+                                      final rows = <Widget>[];
+                                      
+                                      for (var i = 0; i < systemCards.length; i += columns) {
+                                        final rowItems = systemCards.skip(i).take(columns).toList();
+                                        rows.add(
+                                          Padding(
+                                            padding: const EdgeInsets.only(bottom: AppDimensions.paddingM),
+                                            child: Row(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: rowItems.map((card) {
+                                                return Expanded(
+                                                  child: Padding(
+                                                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                                                    child: card,
+                                                  ),
+                                                );
+                                              }).toList()
+                                              // Add empty spacers if row is not full
+                                              ..addAll(
+                                                List.generate(
+                                                  columns - rowItems.length,
+                                                  (_) => const Expanded(child: SizedBox()),
+                                                ),
+                                              ),
+                                            ),
                                           ),
-                                        )
-                                        .toList(),
+                                        );
+                                      }
+                                      
+                                      return Column(children: rows);
+                                    },
                                   );
                                 },
                               ),

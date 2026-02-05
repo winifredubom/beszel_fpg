@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import '../../../../core/theme/theme_extensions.dart';
+import '../../../../core/utils/responsive.dart';
 
 /// Layout options
 enum LayoutOption { grid, table }
@@ -68,9 +69,14 @@ class ViewOptionsPopup extends ConsumerWidget {
     final currentLayout = ref.watch(layoutOptionProvider);
     final currentSort = ref.watch(sortOptionProvider);
     final visibleFields = ref.watch(visibleFieldsProvider);
+    final responsive = Responsive(context);
 
     return Container(
-      width: 420,
+      width: responsive.popupWidth,
+      constraints: BoxConstraints(
+        maxWidth: responsive.isMobile ? responsive.screenWidth * 0.95 : 500,
+        maxHeight: responsive.screenHeight * 0.8,
+      ),
       decoration: BoxDecoration(
         color: context.surfaceColor,
         borderRadius: BorderRadius.circular(12),
@@ -86,93 +92,177 @@ class ViewOptionsPopup extends ConsumerWidget {
           ),
         ],
       ),
-      child: IntrinsicHeight(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Layout Column
-            Expanded(
-              child: _buildColumn(
-                context: context,
-                icon: CupertinoIcons.square_grid_2x2,
-                title: 'Layout',
-                child: Column(
-                  children: [
-                    // _buildLayoutOption(
-                    //   context: context,
-                    //   ref: ref,
-                    //   icon: CupertinoIcons.list_bullet,
-                    //   label: 'Table',
-                    //   option: LayoutOption.table,
-                    //   currentOption: currentLayout,
-                    //   enabled: false, // Table not implemented yet
-                    // ),
-                    _buildLayoutOption(
-                      context: context,
-                      ref: ref,
-                      icon: CupertinoIcons.square_grid_2x2,
-                      label: 'Grid',
-                      option: LayoutOption.grid,
-                      currentOption: currentLayout,
-                      enabled: true,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            // Divider
-            Container(
-              width: 0.5,
-              color: context.borderColor,
-            ),
-            // Sort By Column
-            Expanded(
-              child: _buildColumn(
-                context: context,
-                icon: CupertinoIcons.arrow_up_arrow_down,
-                title: 'Sort By',
-                child: Column(
-                  children: [
-                    _buildSortOption(context, ref, 'System', SortOption.systemAsc, SortOption.systemDesc, currentSort),
-                    _buildSortOption(context, ref, 'CPU', SortOption.cpuAsc, SortOption.cpuDesc, currentSort),
-                    _buildSortOption(context, ref, 'Memory', SortOption.memoryAsc, SortOption.memoryDesc, currentSort),
-                    _buildSortOption(context, ref, 'Disk', SortOption.diskAsc, SortOption.diskDesc, currentSort),
-                    _buildSortOption(context, ref, 'GPU', SortOption.gpuAsc, SortOption.gpuDesc, currentSort),
-                    _buildSortOption(context, ref, 'Network', SortOption.netWorkAsc, SortOption.netWorkDesc, currentSort),
-                    _buildSortOption(context, ref, 'Temp', SortOption.temperatureAsc, SortOption.temperatureDesc, currentSort),
-                    _buildSortOption(context, ref, 'Agent V.', SortOption.agentVersionAsc, SortOption.agentVersionDesc, currentSort),
-                  ],
-                ),
-              ),
-            ),
-            // Divider
-            Container(
-              width: 0.5,
-              color: context.borderColor,
-            ),
-            // Visible Fields Column
-            Expanded(
-              child: _buildColumn(
-                context: context,
-                icon: CupertinoIcons.eye,
-                title: 'Visible Fields',
-                child: Column(
-                  children: [
-                    _buildVisibleFieldOption(context, ref, 'CPU', VisibleField.cpu, visibleFields),
-                    _buildVisibleFieldOption(context, ref, 'Memory', VisibleField.memory, visibleFields),
-                    _buildVisibleFieldOption(context, ref, 'Disk', VisibleField.disk, visibleFields),
-                    _buildVisibleFieldOption(context, ref, 'GPU', VisibleField.gpu, visibleFields),
-                    _buildVisibleFieldOption(context, ref, 'Net', VisibleField.network, visibleFields),
-                    _buildVisibleFieldOption(context, ref, 'Temp', VisibleField.temperature, visibleFields),
-                    _buildVisibleFieldOption(context, ref, 'Agent', VisibleField.agentVersion, visibleFields),
-                    _buildVisibleFieldOption(context, ref, 'Actions', VisibleField.actions, visibleFields),
-                  ],
-                ),
-              ),
-            ),
-          ],
+      child: SingleChildScrollView(
+        child: IntrinsicHeight(
+          child: responsive.isMobile
+              ? _buildMobileLayout(context, ref, currentLayout, currentSort, visibleFields)
+              : _buildDesktopLayout(context, ref, currentLayout, currentSort, visibleFields),
         ),
       ),
+    );
+  }
+  
+  Widget _buildMobileLayout(
+    BuildContext context,
+    WidgetRef ref,
+    LayoutOption currentLayout,
+    SortOption currentSort,
+    Set<VisibleField> visibleFields,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Layout Section
+        _buildColumn(
+          context: context,
+          icon: CupertinoIcons.square_grid_2x2,
+          title: 'Layout',
+          child: Column(
+            children: [
+              _buildLayoutOption(
+                context: context,
+                ref: ref,
+                icon: CupertinoIcons.square_grid_2x2,
+                label: 'Grid',
+                option: LayoutOption.grid,
+                currentOption: currentLayout,
+                enabled: true,
+              ),
+            ],
+          ),
+        ),
+        // Divider
+        Container(
+          height: 0.5,
+          color: context.borderColor,
+        ),
+        // Sort By Section
+        _buildColumn(
+          context: context,
+          icon: CupertinoIcons.arrow_up_arrow_down,
+          title: 'Sort By',
+          child: Column(
+            children: [
+              _buildSortOption(context, ref, 'System', SortOption.systemAsc, SortOption.systemDesc, currentSort),
+              _buildSortOption(context, ref, 'CPU', SortOption.cpuAsc, SortOption.cpuDesc, currentSort),
+              _buildSortOption(context, ref, 'Memory', SortOption.memoryAsc, SortOption.memoryDesc, currentSort),
+              _buildSortOption(context, ref, 'Disk', SortOption.diskAsc, SortOption.diskDesc, currentSort),
+              _buildSortOption(context, ref, 'GPU', SortOption.gpuAsc, SortOption.gpuDesc, currentSort),
+              _buildSortOption(context, ref, 'Network', SortOption.netWorkAsc, SortOption.netWorkDesc, currentSort),
+              _buildSortOption(context, ref, 'Temp', SortOption.temperatureAsc, SortOption.temperatureDesc, currentSort),
+              _buildSortOption(context, ref, 'Agent V.', SortOption.agentVersionAsc, SortOption.agentVersionDesc, currentSort),
+            ],
+          ),
+        ),
+        // Divider
+        Container(
+          height: 0.5,
+          color: context.borderColor,
+        ),
+        // Visible Fields Section
+        _buildColumn(
+          context: context,
+          icon: CupertinoIcons.eye,
+          title: 'Visible Fields',
+          child: Column(
+            children: [
+              _buildVisibleFieldOption(context, ref, 'CPU', VisibleField.cpu, visibleFields),
+              _buildVisibleFieldOption(context, ref, 'Memory', VisibleField.memory, visibleFields),
+              _buildVisibleFieldOption(context, ref, 'Disk', VisibleField.disk, visibleFields),
+              _buildVisibleFieldOption(context, ref, 'GPU', VisibleField.gpu, visibleFields),
+              _buildVisibleFieldOption(context, ref, 'Net', VisibleField.network, visibleFields),
+              _buildVisibleFieldOption(context, ref, 'Temp', VisibleField.temperature, visibleFields),
+              _buildVisibleFieldOption(context, ref, 'Agent', VisibleField.agentVersion, visibleFields),
+              _buildVisibleFieldOption(context, ref, 'Actions', VisibleField.actions, visibleFields),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+  
+  Widget _buildDesktopLayout(
+    BuildContext context,
+    WidgetRef ref,
+    LayoutOption currentLayout,
+    SortOption currentSort,
+    Set<VisibleField> visibleFields,
+  ) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Layout Column
+        Expanded(
+          child: _buildColumn(
+            context: context,
+            icon: CupertinoIcons.square_grid_2x2,
+            title: 'Layout',
+            child: Column(
+              children: [
+                _buildLayoutOption(
+                  context: context,
+                  ref: ref,
+                  icon: CupertinoIcons.square_grid_2x2,
+                  label: 'Grid',
+                  option: LayoutOption.grid,
+                  currentOption: currentLayout,
+                  enabled: true,
+                ),
+              ],
+            ),
+          ),
+        ),
+        // Divider
+        Container(
+          width: 0.5,
+          color: context.borderColor,
+        ),
+        // Sort By Column
+        Expanded(
+          child: _buildColumn(
+            context: context,
+            icon: CupertinoIcons.arrow_up_arrow_down,
+            title: 'Sort By',
+            child: Column(
+              children: [
+                _buildSortOption(context, ref, 'System', SortOption.systemAsc, SortOption.systemDesc, currentSort),
+                _buildSortOption(context, ref, 'CPU', SortOption.cpuAsc, SortOption.cpuDesc, currentSort),
+                _buildSortOption(context, ref, 'Memory', SortOption.memoryAsc, SortOption.memoryDesc, currentSort),
+                _buildSortOption(context, ref, 'Disk', SortOption.diskAsc, SortOption.diskDesc, currentSort),
+                _buildSortOption(context, ref, 'GPU', SortOption.gpuAsc, SortOption.gpuDesc, currentSort),
+                _buildSortOption(context, ref, 'Network', SortOption.netWorkAsc, SortOption.netWorkDesc, currentSort),
+                _buildSortOption(context, ref, 'Temp', SortOption.temperatureAsc, SortOption.temperatureDesc, currentSort),
+                _buildSortOption(context, ref, 'Agent V.', SortOption.agentVersionAsc, SortOption.agentVersionDesc, currentSort),
+              ],
+            ),
+          ),
+        ),
+        // Divider
+        Container(
+          width: 0.5,
+          color: context.borderColor,
+        ),
+        // Visible Fields Column
+        Expanded(
+          child: _buildColumn(
+            context: context,
+            icon: CupertinoIcons.eye,
+            title: 'Visible Fields',
+            child: Column(
+              children: [
+                _buildVisibleFieldOption(context, ref, 'CPU', VisibleField.cpu, visibleFields),
+                _buildVisibleFieldOption(context, ref, 'Memory', VisibleField.memory, visibleFields),
+                _buildVisibleFieldOption(context, ref, 'Disk', VisibleField.disk, visibleFields),
+                _buildVisibleFieldOption(context, ref, 'GPU', VisibleField.gpu, visibleFields),
+                _buildVisibleFieldOption(context, ref, 'Net', VisibleField.network, visibleFields),
+                _buildVisibleFieldOption(context, ref, 'Temp', VisibleField.temperature, visibleFields),
+                _buildVisibleFieldOption(context, ref, 'Agent', VisibleField.agentVersion, visibleFields),
+                _buildVisibleFieldOption(context, ref, 'Actions', VisibleField.actions, visibleFields),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -394,15 +484,18 @@ void showViewOptionsPopup(BuildContext context, GlobalKey buttonKey) {
             child: Container(color: Colors.transparent),
           ),
         ),
-        // Popup positioned below the button
+        // Popup positioned below the button, centered horizontally
         Positioned(
           top: buttonPosition.dy + buttonSize.height + 8,
-          right: MediaQuery.of(context).size.width - buttonPosition.dx - buttonSize.width,
-          child: Material(
-            color: Colors.transparent,
-            child: Consumer(
-              builder: (context, ref, child) => ViewOptionsPopup(
-                onClose: () => overlayEntry.remove(),
+          left: 0,
+          right: 0,
+          child: Center(
+            child: Material(
+              color: Colors.transparent,
+              child: Consumer(
+                builder: (context, ref, child) => ViewOptionsPopup(
+                  onClose: () => overlayEntry.remove(),
+                ),
               ),
             ),
           ),

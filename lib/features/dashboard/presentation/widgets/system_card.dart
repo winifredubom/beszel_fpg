@@ -21,6 +21,8 @@ class SystemCard extends StatelessWidget {
     this.onTap,
     this.onNotificationTap,
     this.onMenuTap,
+    this.onPinTap,
+    this.isPinned = false,
     this.showCpu = true,
     this.showMemory = true,
     this.showDisk = true,
@@ -43,6 +45,8 @@ class SystemCard extends StatelessWidget {
   final VoidCallback? onTap;
   final VoidCallback? onNotificationTap;
   final VoidCallback? onMenuTap;
+  final VoidCallback? onPinTap;
+  final bool isPinned;
   
   // Visibility toggles
   final bool showCpu;
@@ -105,25 +109,27 @@ class SystemCard extends StatelessWidget {
                     ),
                   ),
                   if (showActions) ...[
-                    CupertinoButton(
-                      padding: EdgeInsets.zero,
-                      onPressed: onNotificationTap,
-                      child: Icon(
-                        CupertinoIcons.bell,
-                        color: context.textColor,
-                        size: 20,
+                    // Pin indicator
+                    if (isPinned)
+                      Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: Icon(
+                          CupertinoIcons.pin_fill,
+                          color: CupertinoColors.activeBlue,
+                          size: 16,
+                        ),
                       ),
-                    ),
+                    // CupertinoButton(
+                    //   padding: EdgeInsets.zero,
+                    //   onPressed: onNotificationTap,
+                    //   child: Icon(
+                    //     CupertinoIcons.bell,
+                    //     color: context.textColor,
+                    //     size: 20,
+                    //   ),
+                    // ),
                     const SizedBox(width: 4),
-                    CupertinoButton(
-                      padding: EdgeInsets.zero,
-                      onPressed: onMenuTap,
-                      child: Icon(
-                        CupertinoIcons.ellipsis,
-                        color: context.textColor,
-                        size: 20,
-                      ),
-                    ),
+                    _buildPopupMenu(context),
                   ],
                 ],
               ),
@@ -324,6 +330,52 @@ class SystemCard extends StatelessWidget {
             color: context.textColor,
             fontSize: 14,
             fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPopupMenu(BuildContext context) {
+    return PopupMenuButton<String>(
+      padding: EdgeInsets.zero,
+      icon: Icon(
+        CupertinoIcons.ellipsis,
+        color: context.textColor,
+        size: 20,
+      ),
+      color: context.surfaceColor,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(
+          color: context.borderColor,
+          width: 0.5,
+        ),
+      ),
+      onSelected: (value) {
+        if (value == 'pin') {
+          onPinTap?.call();
+        }
+      },
+      itemBuilder: (context) => [
+        PopupMenuItem<String>(
+          value: 'pin',
+          child: Row(
+            children: [
+              Icon(
+                isPinned ? CupertinoIcons.pin_slash : CupertinoIcons.pin,
+                size: 18,
+                color: context.textColor,
+              ),
+              const SizedBox(width: 12),
+              Text(
+                isPinned ? 'Unpin Server' : 'Pin Server',
+                style: TextStyle(
+                  color: context.textColor,
+                  fontSize: 14,
+                ),
+              ),
+            ],
           ),
         ),
       ],
